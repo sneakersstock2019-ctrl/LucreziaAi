@@ -9,4 +9,7 @@ public class UserSession {
 
     public List<String> cronologiaMessaggi = new ArrayList<>();
 
+    public int tentativiComprensione = 0;
+
+    public boolean haTicketAperti = false;
 }

@@ -28,6 +28,9 @@ public class WhatsAppService {
     @Value("${whatsapp.phone-number-id}")
     private String phoneNumberId;
     
+    private static final String STEP_SCELTA_TICKET = "SCELTA_TICKET";
+    private static final String STEP_NUOVA_SEGNALAZIONE = "NUOVA_SEGNALAZIONE";
+    
     private final OpenAIService openAIService;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -88,6 +91,52 @@ public class WhatsAppService {
         sessions.putIfAbsent(from, userSession);
         userSession.cronologiaMessaggi.add(testoMessaggio);
         
+        if (userSession.step == null && userSession.haTicketAperti) {
+        	userSession.step = STEP_SCELTA_TICKET;
+
+        	invioMessaggio(from,
+                    "Ciao " + nomeUtente + ", sono Lucrezia, l'assistente virtuale del condominio 😊\n\n" +
+                    "Vedo che hai già una o più segnalazioni aperte.\n\n" +
+                    "Vuoi:\n" +
+                    "1️⃣ conoscere lo stato dei ticket aperti\n" +
+                    "2️⃣ aprire una nuova segnalazione?"
+            );
+            return;
+        }
+        
+        if (STEP_SCELTA_TICKET.equals(userSession.step)) {
+            if (testoMessaggio.toLowerCase().contains("1") || testoMessaggio.toLowerCase().contains("stato") || testoMessaggio.toLowerCase().contains("ticket")) {
+            	invioMessaggio(from,
+                        "Certo 😊\n" +
+                        "Puoi monitorare lo stato delle tue segnalazioni da qui:\n\n" +
+                        "https://demo-condomini.it/ticket?telefono=" + from
+                );
+
+            	userSession.step = null;
+                return;
+            }
+
+            if (testoMessaggio.toLowerCase().contains("2") || testoMessaggio.toLowerCase().contains("nuova") || testoMessaggio.toLowerCase().contains("segnalazione")) {
+            	userSession.step = STEP_NUOVA_SEGNALAZIONE;
+            	userSession.tentativiComprensione = 0;
+            	userSession.cronologiaMessaggi.clear();
+
+            	invioMessaggio(from,
+                        "Va bene 😊\n" +
+                        "Descrivimi pure il nuovo problema e ti aiuterò ad aprire la segnalazione."
+                );
+                return;
+            }
+
+            invioMessaggio(from,
+                    "Puoi rispondermi con:\n" +
+                    "1 per conoscere lo stato dei ticket aperti\n" +
+                    "2 per aprire una nuova segnalazione"
+            );
+            return;
+        }
+        
+        
         aiResponse = openAIService.askLucrezia(testoMessaggio, userSession);
         rispostaPerUtente = aiResponse.getReply();
         
@@ -100,7 +149,7 @@ public class WhatsAppService {
             ticket.setDescrizione(testoMessaggio);
             ticket.setCategoria(aiResponse.getCategory());
             ticket.setStato("APERTO");
-
+            userSession.haTicketAperti = true;
 
             rispostaPerUtente += """
 
@@ -114,40 +163,38 @@ public class WhatsAppService {
                     ticket.getId(),
                     ticket.getId()
             );
+        } else {
+        	userSession.tentativiComprensione++;
+
+            if (userSession.tentativiComprensione >= 3) {
+
+                ticket = new Ticket();
+                ticket.setId(123456L);
+                ticket.setNome(nomeUtente);
+                ticket.setTelefono(from);
+                ticket.setDescrizione(testoMessaggio);
+                ticket.setCategoria("generico");
+                ticket.setStato("APERTO");
+
+                userSession.haTicketAperti = true;
+
+                rispostaPerUtente = 
+                        "Grazie per le informazioni 😊\n\n" +
+                        "Per non farti perdere altro tempo, ho aperto una segnalazione generica riportando la descrizione che mi hai fornito.\n\n" +
+                        "Ticket aperto correttamente ✅\n" +
+                        "Numero ticket: #" + ticket.getId() + "\n\n" +
+                        "Puoi monitorarlo qui:\n" +
+                        "https://demo-condomini.it/ticket/";
+
+                userSession.step = null;
+                userSession.tentativiComprensione = 0;
+                userSession.cronologiaMessaggi.clear();
+            }
+
         }
 
         invioMessaggio(from, rispostaPerUtente);
         
-//        // STEP 1 - saluto
-//        if (userSession.step == null) {
-//        	userSession.step = "ASK_PROBLEM";
-//        	invioMessaggio(from, "Ciao " + nomeUtente + " 👋\nDimmi il problema.");
-//            return;
-//        }
-//
-//        // STEP 2 - ricezione problema
-//        if ("ASK_PROBLEM".equals(userSession.step)) {
-//            categoria = classificazione(testoMessaggio);
-//
-//            ticket = new Ticket();
-//            ticket.setNome(nomeUtente);
-//            ticket.setTelefono(from);
-//            ticket.setDescrizione(testoMessaggio);
-//            ticket.setCategoria(categoria);
-//            ticket.setStato("APERTO");
-//
-//            userSession.step = "CLOSED";
-//
-//            invioMessaggio(from,
-//                    "Grazie " + nomeUtente + " 👍\n\n" +
-//                    "Ho aperto il ticket #" + ticket.getId() + "\n" +
-//                    "Categoria: " + categoria + "\n\n" +
-//                    "Un tecnico ti contatterà a breve. \n\n\n" + 
-//                    "Per seguire lo stato della segnalazione clicca qui --> LINK");
-//
-//            return;
-//        }
-
     }
 
     private void invioMessaggio(String to, String testoMessaggio) {
