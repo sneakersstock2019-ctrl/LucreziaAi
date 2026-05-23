@@ -40,7 +40,8 @@ public class WhatsAppService {
 
     private final Map<String, String> utenti = Map.of(
             "393492123304", "Salvatore D'Amato",
-            "393282036763", "Marta Raffone"
+            "393282036763", "Marta Raffone",
+            "393382702339", "Renato Zaino"
     );
 
     public void elaboraMessaggio(String body) {
@@ -149,7 +150,6 @@ public class WhatsAppService {
             ticket.setDescrizione(testoMessaggio);
             ticket.setCategoria(aiResponse.getCategory());
             ticket.setStato("APERTO");
-            userSession.haTicketAperti = true;
 
             rispostaPerUtente += """
 
@@ -163,10 +163,15 @@ public class WhatsAppService {
                     ticket.getId(),
                     ticket.getId()
             );
+            
+            userSession.haTicketAperti = true;
+            userSession.step = null;
+            userSession.tentativiComprensione = 0;
+            userSession.cronologiaMessaggi.clear();
         } else {
         	userSession.tentativiComprensione++;
 
-            if (userSession.tentativiComprensione >= 3) {
+            if (userSession.tentativiComprensione >= 10) {
 
                 ticket = new Ticket();
                 ticket.setId(123456L);
@@ -176,8 +181,6 @@ public class WhatsAppService {
                 ticket.setCategoria("generico");
                 ticket.setStato("APERTO");
 
-                userSession.haTicketAperti = true;
-
                 rispostaPerUtente = 
                         "Grazie per le informazioni 😊\n\n" +
                         "Per non farti perdere altro tempo, ho aperto una segnalazione generica riportando la descrizione che mi hai fornito.\n\n" +
@@ -186,6 +189,7 @@ public class WhatsAppService {
                         "Puoi monitorarlo qui:\n" +
                         "https://demo-condomini.it/ticket/";
 
+                userSession.haTicketAperti = true;
                 userSession.step = null;
                 userSession.tentativiComprensione = 0;
                 userSession.cronologiaMessaggi.clear();
