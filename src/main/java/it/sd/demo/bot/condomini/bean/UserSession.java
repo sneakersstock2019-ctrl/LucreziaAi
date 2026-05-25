@@ -5,6 +5,8 @@ import java.util.List;
 
 public class UserSession {
 
+	public String nome;
+	
     public String step;
 
     public List<String> cronologiaMessaggi = new ArrayList<>();

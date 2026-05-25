@@ -39,9 +39,9 @@ public class WhatsAppService {
     private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
 
     private final Map<String, String> utenti = Map.of(
-            "393492123304", "Salvatore D'Amato",
-            "393282036763", "Marta Raffone",
-            "393382702339", "Renato Zaino"
+            "393492123304", "Salvatore",
+            "393282036763", "Marta",
+            "393382702339", "Renato"
     );
 
     public void elaboraMessaggio(String body) {
@@ -91,6 +91,7 @@ public class WhatsAppService {
 
         userSession = sessions.getOrDefault(from, new UserSession());
         sessions.putIfAbsent(from, userSession);
+        userSession.nome = nomeUtente;
         userSession.cronologiaMessaggi.add(testoMessaggio);
         
         if (userSession.step == null && userSession.haTicketAperti) {
