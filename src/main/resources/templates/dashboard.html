@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Nexus Domus - Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+
+<body>
+
+<div class="d-flex min-vh-100">
+
+    <aside class="sidebar d-none d-lg-flex flex-column">
+        <div class="brand d-flex align-items-center gap-3">
+            <div class="logo">ND</div>
+            <div>
+                <h4 class="mb-0 fw-bold">Nexus Domus</h4>
+                <small>GESTIONALE</small>
+            </div>
+        </div>
+
+        <div class="user-box d-flex align-items-center gap-3 mt-4">
+            <div class="avatar">R</div>
+            <div>
+                <div class="fw-bold" th:text="${adminName}">Renato</div>
+                <small>Amministratore</small>
+            </div>
+            <span class="badge rounded-pill bg-danger ms-auto" th:text="${pendingCount}">3</span>
+        </div>
+
+        <nav class="mt-4">
+            <div class="nav-title">OPERATIVITÀ</div>
+            <a class="nav-link active" href="/dashboard">▦ Dashboard</a>
+            <a class="nav-link" href="#">↺ Storico</a>
+            <a class="nav-link" href="#">▣ Calendario</a>
+            <a class="nav-link" href="#">🔧 Manutenzioni</a>
+            <a class="nav-link" href="#">⌖ Mappa</a>
+
+            <div class="nav-title mt-4">IMPOSTAZIONI</div>
+            <a class="nav-link" href="#">▣ Bacheca & QR</a>
+            <a class="nav-link" href="#">☷ Gestione Dati</a>
+            <a class="nav-link" href="#">▭ Piano</a>
+        </nav>
+
+        <div class="mt-auto guide">▤ Guida</div>
+    </aside>
+
+    <main class="content flex-grow-1">
+
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <button class="btn menu-btn position-relative">
+                ☰
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                      th:text="${pendingCount}">3</span>
+            </button>
+            <h1 class="fw-bold mb-0">Nexus Domus</h1>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
+            <span class="badge-soft-warning" th:text="${pendingCount + ' in attesa'}">3 in attesa</span>
+
+            <div class="d-flex gap-3">
+                <button class="btn btn-outline-primary btn-lg fw-bold">↓ CSV</button>
+                <button class="btn btn-outline-danger btn-lg fw-bold">↓ PDF</button>
+            </div>
+        </div>
+
+        <section class="mb-4">
+            <input class="form-control form-control-lg search-input mb-3"
+                   placeholder="Cerca per nome, problema, condominio...">
+
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <span class="filter-label">Priorità:</span>
+                <button class="btn chip active">Tutte</button>
+                <button class="btn chip">🚨 Urgente</button>
+                <button class="btn chip">⚠ Alta</button>
+                <button class="btn chip">Standard</button>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="filter-label">Servizio:</span>
+                <button class="btn chip active">Tutti</button>
+                <button class="btn chip">Elettricista</button>
+                <button class="btn chip">Generale</button>
+            </div>
+        </section>
+
+        <section class="dashboard-board">
+
+            <div class="card section-card mb-4">
+                <div class="card-header bg-white d-flex align-items-center gap-3 p-4">
+                    <div class="section-icon success">✓</div>
+                    <div>
+                        <h3 class="mb-1 fw-bold">
+                            Lavori Autorizzati
+                            <span class="badge rounded-pill bg-success" th:text="${#lists.size(lavoriAutorizzati)}">2</span>
+                        </h3>
+                        <p class="mb-0 text-secondary">Click per confermare e assegnare azienda</p>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div th:each="ticket : ${lavoriAutorizzati}"
+                         class="ticket-card green-border mb-3">
+
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <h4 class="fw-bold mb-1" th:text="${ticket.nome}">Daniele Cecconato</h4>
+                                <span class="status-badge" th:text="${ticket.stato}">In attesa</span>
+                            </div>
+
+                            <div class="d-flex gap-2 align-items-start">
+                                <span class="priority-badge bg-success" th:text="${ticket.priorita}">P2</span>
+                                <button class="btn icon-btn">💬</button>
+                                <button class="btn icon-btn">🗑</button>
+                            </div>
+                        </div>
+
+                        <p class="text-secondary fs-5 mt-3 mb-1" th:text="${ticket.condominio}">Condominio Via Roma 15</p>
+                        <p class="ticket-description" th:text="${ticket.descrizione}">Lampadina guasta scale condominiali</p>
+                        <p class="service-text">Servizio: <span th:text="${ticket.servizio}">elettricista</span></p>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-6">
+                                <button class="btn btn-success btn-lg w-100 fw-bold">✓ Approva</button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-danger btn-lg w-100 fw-bold">× Rifiuta</button>
+                            </div>
+                        </div>
+
+                        <p class="text-secondary mt-3 mb-0" th:text="${ticket.data}">22/05, 22:33</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card section-card mb-4">
+                <div class="card-header bg-white d-flex align-items-center gap-3 p-4">
+                    <div class="section-icon assembly-icon">◷</div>
+                    <div>
+                        <h3 class="mb-1 fw-bold">
+                            Da Assemblea
+                            <span class="badge rounded-pill bg-warning text-dark" th:text="${#lists.size(daAssemblea)}">1</span>
+                        </h3>
+                        <p class="mb-0 text-secondary">Richiede discussione in assemblea condominiale</p>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div th:each="ticket : ${daAssemblea}"
+                         class="ticket-card orange-border mb-3">
+
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <h4 class="fw-bold mb-1" th:text="${ticket.nome}">Daniele Cecconato</h4>
+                                <span class="status-badge" th:text="${ticket.stato}">In attesa</span>
+                            </div>
+
+                            <div class="d-flex gap-2 align-items-start">
+                                <span class="priority-badge bg-warning text-dark" th:text="${ticket.priorita}">P1</span>
+                                <button class="btn icon-btn">💬</button>
+                                <button class="btn icon-btn">🗑</button>
+                            </div>
+                        </div>
+
+                        <p class="text-secondary fs-5 mt-3 mb-1" th:text="${ticket.condominio}">Condominio Via Roma 15</p>
+                        <p class="ticket-description" th:text="${ticket.descrizione}">Richiesta assemblea</p>
+                        <p class="service-text">Servizio: <span th:text="${ticket.servizio}">generale</span></p>
+
+                        <button class="btn btn-outline-warning btn-lg fw-bold mt-2">🏛 Porta in assemblea</button>
+
+                        <p class="text-secondary mt-3 mb-0" th:text="${ticket.data}">22/05, 14:42</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card section-card mb-5">
+                <div class="card-header bg-white d-flex align-items-center gap-3 p-4">
+                    <div class="section-icon danger-icon">!</div>
+                    <div>
+                        <h3 class="mb-1 fw-bold">
+                            Non Pertinenti
+                            <span class="badge rounded-pill bg-danger">0</span>
+                        </h3>
+                        <p class="mb-0 text-secondary">Fuori competenza amministratore</p>
+                    </div>
+                </div>
+
+                <div class="card-body empty-box">
+                    Nessuna richiesta
+                </div>
+            </div>
+
+        </section>
+
+        <footer class="text-center text-secondary pb-5">
+            © 2025-2026 D&J Corporate s.r.l.s — Software proprietario. Tutti i diritti riservati.
+            <br>
+            <a href="#">Guida</a>
+            <a href="#">Assistenza</a>
+            <a href="#">Piani</a>
+            <a href="/terms">Termini</a>
+            <a href="/privacy">Privacy</a>
+        </footer>
+
+        <button class="chat-floating">□</button>
+
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

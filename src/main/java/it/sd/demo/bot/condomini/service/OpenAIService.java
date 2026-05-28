@@ -19,7 +19,6 @@ import it.sd.demo.bot.condomini.bean.OpenAIRequest;
 import it.sd.demo.bot.condomini.bean.OpenAIRequestMessage;
 import it.sd.demo.bot.condomini.bean.OpenAIResponse;
 import it.sd.demo.bot.condomini.bean.UserSession;
-import jakarta.annotation.PostConstruct;
 
 @Service
 public class OpenAIService {
@@ -30,11 +29,6 @@ public class OpenAIService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    @PostConstruct
-    public void debug() {
-        System.out.println("OPENAI KEY = " + apiKey);
-    }
-
     public AIResponse askLucrezia(String messaggioUtente, UserSession session) {
     	List<OpenAIRequestMessage> messaggiOpenAIRequestMessage = null;
     	OpenAIRequest openAIRequest = null;
@@ -47,6 +41,7 @@ public class OpenAIService {
             messaggiOpenAIRequestMessage = new ArrayList<>();
             
             systemPrompt = buildSystemPrompt(session.nome, session.primoMessaggio);
+            System.out.println("systemPrompt: " + systemPrompt);
             messaggiOpenAIRequestMessage.add(new OpenAIRequestMessage(
                     "system",
                     systemPrompt
