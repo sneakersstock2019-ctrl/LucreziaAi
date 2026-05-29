@@ -6,9 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin@7.0.7/dist/css/styles.css" rel="stylesheet">
+
     <script src="https://use.fontawesome.com/releases/v6.5.0/js/all.js" crossorigin="anonymous"></script>
 
-	<link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin@7.0.7/dist/css/styles.css" rel="stylesheet" />
     <link rel="stylesheet" th:href="@{/css/custom.css}">
 </head>
 
@@ -115,191 +116,207 @@
     <div id="layoutSidenav_content">
 
         <main class="main-ai">
-<div class="top-ai">
-            <div>
-                <span class="eyebrow">Assistente operativo condominiale</span>
-                <h1>Buongiorno <span th:text="${adminName}">Renato</span> 👋</h1>
-                <p>Lucrezia ti aiuta a gestire ticket, priorità e fornitori in modo intelligente.</p>
-            </div>
 
-            <div class="top-actions">
-                <button class="btn btn-light btn-lg">
-                    <i class="fa-solid fa-bell"></i>
-                </button>
-                <button class="btn btn-primary btn-lg">
-                    <i class="fa-solid fa-plus"></i>
-                    Nuovo ticket
-                </button>
-            </div>
-        </div>
+            <div class="top-ai">
+                <div>
+                    <span class="eyebrow">Assistente operativo condominiale</span>
+                    <h1>Buongiorno <span th:text="${adminName}">Renato</span> 👋</h1>
+                    <p>Lucrezia ti aiuta a gestire ticket, priorità e fornitori in modo intelligente.</p>
+                </div>
 
-        <section class="hero-ai">
-
-            <div class="hero-content">
-                <span class="ai-pill">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    Lucrezia AI
-                </span>
-
-                <h2>Cosa vuoi sapere oggi?</h2>
-
-                <p>
-                    Chiedi a Lucrezia di analizzare i ticket, suggerire priorità,
-                    preparare risposte ai condomini o assegnare le segnalazioni ai fornitori corretti.
-                </p>
-
-                <div class="ai-input-box">
-                    <input type="text"
-                           placeholder="Esempio: mostrami i ticket urgenti di Via Europa">
-                    <button>
-                        <i class="fa-solid fa-paper-plane"></i>
+                <div class="top-actions">
+                    <button class="btn btn-light btn-lg">
+                        <i class="fa-solid fa-bell"></i>
+                    </button>
+                    <button class="btn btn-primary btn-lg">
+                        <i class="fa-solid fa-plus"></i>
+                        Nuovo ticket
                     </button>
                 </div>
-
-                <div class="quick-prompts">
-                    <button>Riassumi ticket urgenti</button>
-                    <button>Chiama fornitore idraulico</button>
-                    <button>Prepara risposta condomino</button>
-                </div>
             </div>
 
-            <div class="hero-orb">
-                <div class="orb">
-                    <i class="fa-solid fa-brain"></i>
-                </div>
-            </div>
+            <section class="hero-ai">
 
-        </section>
+                <div class="hero-content">
+                    <span class="ai-pill">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        Lucrezia AI
+                    </span>
 
-        <section class="stats-grid">
+                    <h2>Cosa vuoi sapere oggi?</h2>
 
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="fa-solid fa-ticket"></i></div>
-                <div>
-                    <span>Ticket aperti</span>
-                    <h3 th:text="${ticketAperti}">8</h3>
-                </div>
-            </div>
+                    <p>
+                        Chiedi a Lucrezia di analizzare i ticket, suggerire priorità,
+                        preparare risposte ai condomini o assegnare le segnalazioni ai fornitori corretti.
+                    </p>
 
-            <div class="stat-card">
-                <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                <div>
-                    <span>Urgenti</span>
-                    <h3 th:text="${ticketUrgenti}">2</h3>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon yellow"><i class="fa-solid fa-check-to-slot"></i></div>
-                <div>
-                    <span>Da approvare</span>
-                    <h3 th:text="${daApprovare}">3</h3>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="fa-solid fa-screwdriver-wrench"></i></div>
-                <div>
-                    <span>Fornitori attivi</span>
-                    <h3 th:text="${fornitoriAttivi}">5</h3>
-                </div>
-            </div>
-
-        </section>
-
-        <section class="content-grid">
-
-            <div class="tickets-panel">
-
-                <div class="panel-header">
-                    <div>
-                        <h3>Segnalazioni recenti</h3>
-                        <p>Ticket aperti tramite WhatsApp e classificati da Lucrezia.</p>
+                    <div class="ai-input-box">
+                        <input type="text"
+                               placeholder="Esempio: mostrami i ticket urgenti di Via Europa">
+                        <button>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
                     </div>
 
-                    <button class="btn btn-outline-primary">
-                        Vedi tutti
-                    </button>
+                    <div class="quick-prompts">
+                        <button>Riassumi ticket urgenti</button>
+                        <button>Prepara risposta condomino</button>
+                        <button>Assegna fornitori</button>
+                    </div>
                 </div>
 
-                <div class="ticket-ai-card" th:each="ticket : ${tickets}">
-                    <div class="ticket-left">
-                        <div class="priority-dot"
-                             th:classappend="${ticket.priorita == 'P1'} ? ' urgent' : (${ticket.priorita == 'P2'} ? ' medium' : ' low')"></div>
+                <div class="hero-orb">
+                    <div class="orb">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                </div>
 
+            </section>
+
+            <section class="stats-grid">
+
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-ticket"></i></div>
+                    <div>
+                        <span>Ticket aperti</span>
+                        <h3 th:text="${ticketAperti}">8</h3>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div>
+                        <span>Urgenti</span>
+                        <h3 th:text="${ticketUrgenti}">2</h3>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fa-solid fa-check-to-slot"></i></div>
+                    <div>
+                        <span>Da approvare</span>
+                        <h3 th:text="${daApprovare}">3</h3>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                    <div>
+                        <span>Fornitori attivi</span>
+                        <h3 th:text="${fornitoriAttivi}">5</h3>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="content-grid">
+
+                <div class="tickets-panel">
+
+                    <div class="panel-header">
                         <div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <h5 th:text="${ticket.nome}">Mario Rossi</h5>
-                                <span class="ticket-status" th:text="${ticket.stato}">In attesa</span>
-                            </div>
+                            <h3>Segnalazioni recenti</h3>
+                            <p>Ticket aperti tramite WhatsApp e classificati da Lucrezia.</p>
+                        </div>
 
-                            <p class="ticket-desc" th:text="${ticket.descrizione}">
-                                Perdita acqua nel vano scale
-                            </p>
+                        <button class="btn btn-outline-primary">
+                            Vedi tutti
+                        </button>
+                    </div>
 
-                            <div class="ticket-meta">
-                                <span><i class="fa-solid fa-building"></i> <span th:text="${ticket.condominio}">Via Europa</span></span>
-                                <span><i class="fa-solid fa-toolbox"></i> <span th:text="${ticket.servizio}">idraulico</span></span>
-                                <span><i class="fa-regular fa-clock"></i> <span th:text="${ticket.data}">oggi</span></span>
+                    <div class="ticket-ai-card" th:each="ticket : ${tickets}">
+                        <div class="ticket-left">
+                            <div class="priority-dot"
+                                 th:classappend="${ticket.priorita == 'P1'} ? ' urgent' : (${ticket.priorita == 'P2'} ? ' medium' : ' low')"></div>
+
+                            <div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h5 th:text="${ticket.nome}">Mario Rossi</h5>
+                                    <span class="ticket-status" th:text="${ticket.stato}">In attesa</span>
+                                </div>
+
+                                <p class="ticket-desc" th:text="${ticket.descrizione}">
+                                    Perdita acqua nel vano scale
+                                </p>
+
+                                <div class="ticket-meta">
+                                    <span><i class="fa-solid fa-building"></i> <span th:text="${ticket.condominio}">Via Europa</span></span>
+                                    <span><i class="fa-solid fa-toolbox"></i> <span th:text="${ticket.servizio}">idraulico</span></span>
+                                    <span><i class="fa-regular fa-clock"></i> <span th:text="${ticket.data}">oggi</span></span>
+                                </div>
                             </div>
+                        </div>
+
+                        <div class="ticket-actions">
+                            <button class="btn btn-light">
+                                <i class="fa-solid fa-comment"></i>
+                            </button>
+                            <button class="btn btn-success">
+                                Approva
+                            </button>
                         </div>
                     </div>
 
-                    <div class="ticket-actions">
-                        <button class="btn btn-light">
-                            <i class="fa-solid fa-comment"></i>
+                </div>
+
+                <div class="side-panel">
+
+                    <div class="mini-card ai-suggestion">
+                        <span class="ai-pill small">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Suggerimento AI
+                        </span>
+
+                        <h4>Priorità consigliata</h4>
+                        <p>
+                            Lucrezia ha rilevato 2 segnalazioni potenzialmente urgenti.
+                            Conviene assegnare prima gli interventi idraulici.
+                        </p>
+
+                        <button class="btn btn-primary w-100">
+                            Analizza con Lucrezia
                         </button>
-                        <button class="btn btn-success">
-                            Approva
-                        </button>
                     </div>
+
+                    <div class="mini-card">
+                        <h4>Azioni rapide</h4>
+
+                        <div class="quick-action">
+                            <i class="fa-solid fa-user-plus"></i>
+                            Aggiungi fornitore
+                        </div>
+
+                        <div class="quick-action">
+                            <i class="fa-solid fa-file-export"></i>
+                            Esporta report
+                        </div>
+
+                        <div class="quick-action">
+                            <i class="fa-solid fa-message"></i>
+                            Invia aggiornamento
+                        </div>
+                    </div>
+
                 </div>
 
-            </div>
-
-            <div class="side-panel">
-
-                <div class="mini-card ai-suggestion">
-                    <span class="ai-pill small">
-                        <i class="fa-solid fa-sparkles"></i>
-                        Suggerimento AI
-                    </span>
-
-                    <h4>Priorità consigliata</h4>
-                    <p>
-                        Lucrezia ha rilevato 2 segnalazioni potenzialmente urgenti.
-                        Conviene assegnare prima gli interventi idraulici.
-                    </p>
-
-                    <button class="btn btn-primary w-100">
-                        Analizza con Lucrezia
-                    </button>
-                </div>
-
-                <div class="mini-card">
-                    <h4>Azioni rapide</h4>
-
-                    <div class="quick-action">
-                        <i class="fa-solid fa-user-plus"></i>
-                        Aggiungi fornitore
-                    </div>
-
-                    <div class="quick-action">
-                        <i class="fa-solid fa-file-export"></i>
-                        Esporta report
-                    </div>
-
-                    <div class="quick-action">
-                        <i class="fa-solid fa-message"></i>
-                        Invia aggiornamento
-                    </div>
-                </div>
-
-            </div>
-
-        </section>        	
+            </section>
 
         </main>
+
+        <footer class="py-4 bg-light mt-auto">
+            <div class="container-fluid px-4">
+                <div class="d-flex align-items-center justify-content-between small">
+                    <div class="text-muted">
+                        © 2026 Nexus Domus
+                    </div>
+                    <div>
+                        <a href="/privacy">Privacy</a>
+                        &middot;
+                        <a href="/terms">Termini</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
 
     </div>
 
