@@ -13,7 +13,8 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
 
-        model.addAttribute("adminName", "Renato (Amministratore)");
+        model.addAttribute("ruolo", "Amministratore");
+        model.addAttribute("adminName", "Renato Zaino");
         model.addAttribute("pendingCount", 3);
 
         model.addAttribute("tickets", List.of(
