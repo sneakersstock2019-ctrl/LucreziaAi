@@ -55,6 +55,33 @@
  <div class="sb-sidenav-menu">
     <div class="nav">
 
+		<div class="user-profile-sidebar">
+		
+		    <div class="d-flex align-items-center mb-3">
+		
+		        <div class="user-avatar">
+		            <i class="fas fa-user"></i>
+		        </div>
+		
+		        <div class="ms-3">
+					<div class="small text-muted" th:text="${ruolo}"></div>
+		            <div class="fw-bold text-white" th:text="${adminName}"></div>
+		        </div>
+		
+		    </div>
+		
+		    <label class="condominio-label">
+		        Condominio
+		    </label>
+		
+		    <select class="form-select condominio-select">
+		        <option selected>Tutti</option>
+		        <option>Via Europa</option>
+		        <option>Via Puglia</option>
+		    </select>
+		
+		</div>
+		<!-- 
         <div class="user-profile-sidebar">
 
             <div class="d-flex align-items-center">
@@ -72,9 +99,9 @@
                 </div>
 
             </div>
-
         </div>
-
+ 		-->
+ 		
         <div class="sb-sidenav-menu-heading">Operatività</div>
 
                     <a class="nav-link active" href="/dashboard">
