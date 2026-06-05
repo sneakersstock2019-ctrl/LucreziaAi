@@ -1,5 +1,7 @@
 package it.sd.demo.bot.condomini.controller;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +16,12 @@ import it.sd.demo.bot.condomini.service.VoiceSessionService;
 public class VoiceController {
 
     private static final String TWILIO_VOICE = "Polly.Bianca-Neural";
+    
+    private final Map<String, String> utenti = Map.of(
+            "+393492123304", "Salvatore",
+            "+393282036763", "Marta",
+            "+393382702339", "Renato"
+    );
 
     @Autowired
     private OpenAIService openAIService;
@@ -37,7 +45,7 @@ public class VoiceController {
         session.primoMessaggio = true;
 
         return buildGatherResponse(
-                "Buongiorno, sono Lucrezia. Mi descriva pure il problema e la aiuterò ad aprire una segnalazione."
+                "Buongiorno " + utenti.get(from) + ", sono Lucrezia. Mi descriva pure il problema e la aiuterò ad aprire una segnalazione."
         );
     }
 
