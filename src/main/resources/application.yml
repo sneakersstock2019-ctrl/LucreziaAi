@@ -11,7 +11,7 @@ whatsapp:
   
 spring:
   datasource:
-  url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+  url: jdbc:postgresql://acela.proxy.rlwy.net:5432/railway?sslmode=require
   username: ${DB_USERNAME}
   password: ${DB_PASSWORD}
   driver-class-name: org.postgresql.Driver
