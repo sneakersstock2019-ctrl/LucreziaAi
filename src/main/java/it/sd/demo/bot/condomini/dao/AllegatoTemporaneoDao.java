@@ -59,7 +59,8 @@ public class AllegatoTemporaneoDao {
         String sql = """
             SELECT id, telefono, tipo, media_id, content_type, nome_file, data_creazione
             FROM allegati_temporanei
-            WHERE telefono = ?
+            WHERE telefono = ? AND 
+                  data_creazione >= CURRENT_TIMESTAMP - INTERVAL '15 minutes'
             ORDER BY data_creazione ASC
             """;
 
@@ -94,7 +95,8 @@ public class AllegatoTemporaneoDao {
 
         String sql = """
             DELETE FROM allegati_temporanei
-            WHERE telefono = ?
+            WHERE telefono = ? OR 
+                  data_creazione < CURRENT_TIMESTAMP - INTERVAL '15 minutes'
             """;
 
         try (
