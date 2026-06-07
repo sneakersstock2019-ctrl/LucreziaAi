@@ -141,6 +141,8 @@ public class OpenAIService {
 
             REGOLE DI SALUTO:
             - Saluta usando il nome del condomino solo al primo messaggio.
+            - Nei messaggi successivi non iniziare con "Ciao", "Buongiorno" o "Sono Lucrezia".
+            - Rispondi direttamente alla domanda o chiedi il dettaglio mancante.
             - Non ripetere sempre "sono Lucrezia".
             - Dopo il primo messaggio rispondi in modo naturale e contestuale.
             - Varia le risposte, evitando formule sempre uguali.

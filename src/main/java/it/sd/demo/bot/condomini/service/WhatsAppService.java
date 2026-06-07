@@ -134,7 +134,10 @@ public class WhatsAppService {
         boolean haTicketAperti = ticketDao.hasTicketApertiByUtente(utente.getId());
         userSession.haTicketAperti = haTicketAperti;
 
-        if (userSession.step == null && haTicketAperti) {
+        if (userSession.step == null 
+                && userSession.cronologiaMessaggi.isEmpty()
+                && userSession.tentativiComprensione == 0
+                && haTicketAperti) {
             userSession.step = STEP_SCELTA_TICKET;
 
             invioMessaggio(from,
@@ -150,10 +153,6 @@ public class WhatsAppService {
         if (STEP_SCELTA_TICKET.equals(userSession.step)) {
             gestisciSceltaTicket(from, testoMessaggio, nomeUtente, userSession);
             return;
-        }
-
-        if (STEP_NUOVA_SEGNALAZIONE.equals(userSession.step)) {
-            userSession.step = null;
         }
 
         String contestoCondominio = condominioAiDao.getContestoAiByCondominio(utente.getIdCondominio());
@@ -227,6 +226,7 @@ public class WhatsAppService {
             return;
         }
 
+        userSession.step = STEP_NUOVA_SEGNALAZIONE;
         userSession.tentativiComprensione++;
 
         if (userSession.tentativiComprensione >= 10) {
