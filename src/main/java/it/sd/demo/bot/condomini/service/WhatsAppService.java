@@ -22,6 +22,7 @@ import it.sd.demo.bot.condomini.bean.Utente;
 import it.sd.demo.bot.condomini.dao.AllegatoDao;
 import it.sd.demo.bot.condomini.dao.AllegatoTemporaneoDao;
 import it.sd.demo.bot.condomini.dao.CondominioAiDao;
+import it.sd.demo.bot.condomini.dao.TicketConversazioneDao;
 import it.sd.demo.bot.condomini.dao.TicketDao;
 import it.sd.demo.bot.condomini.dao.UtenteDao;
 import it.sd.demo.bot.condomini.util.PhoneUtils;
@@ -48,6 +49,7 @@ public class WhatsAppService {
     private final CondominioAiDao condominioAiDao;
     private final AllegatoTemporaneoDao allegatoTemporaneoDao;
     private final AllegatoDao allegatoDao;
+    private final TicketConversazioneDao ticketConversazioneDao;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
@@ -199,6 +201,13 @@ public class WhatsAppService {
             }
 
             int allegatiCollegati = collegaAllegatiTemporanei(from, idTicket);
+            ticketConversazioneDao.insertConversazione(
+                    idTicket,
+                    "WHATSAPP",
+                    "TESTO",
+                    buildConversazioneOriginale(userSession),
+                    null
+            );
 
             rispostaPerUtente += """
 
@@ -247,6 +256,14 @@ public class WhatsAppService {
                 return;
             }
 
+            ticketConversazioneDao.insertConversazione(
+                    idTicket,
+                    "WHATSAPP",
+                    "TESTO",
+                    buildConversazioneOriginale(userSession),
+                    null
+            );
+            
             rispostaPerUtente =
                     "Grazie per le informazioni 😊\n\n" +
                             "Per non farti perdere altro tempo, ho aperto una segnalazione generica riportando la descrizione che mi hai fornito.\n\n" +
@@ -470,5 +487,29 @@ public class WhatsAppService {
             case "alta" -> "alta";
             default -> "media";
         };
+    }
+    
+    private String buildConversazioneOriginale(UserSession userSession) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (userSession == null || userSession.cronologiaMessaggi == null) {
+            return "";
+        }
+
+        for (ChatMessage message : userSession.cronologiaMessaggi) {
+
+            if ("user".equals(message.getRole())) {
+                sb.append("Condomino: ");
+            } else if ("assistant".equals(message.getRole())) {
+                sb.append("Lucrezia: ");
+            } else {
+                sb.append(message.getRole()).append(": ");
+            }
+
+            sb.append(message.getContent()).append("\n\n");
+        }
+
+        return sb.toString().trim();
     }
 }
