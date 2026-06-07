@@ -112,6 +112,14 @@ public class OpenAIService {
             return error;
         }
     }
+    
+    public AIResponse askLucreziaVoice(String messaggioUtente,
+    		UserSession session,
+    		Utente utente,
+    		String contestoCondominio) {
+
+    	return askLucrezia(messaggioUtente, session, utente, contestoCondominio);
+    }
 
     private String buildSystemPrompt(UserSession session, Utente utente, String contestoCondominio) {
 

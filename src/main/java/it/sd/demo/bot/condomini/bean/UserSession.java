@@ -19,4 +19,6 @@ public class UserSession {
     
     public Long idTicketAperto;
     
+    public List<String> registrazioniAudio = new ArrayList<>();
+    
 }
