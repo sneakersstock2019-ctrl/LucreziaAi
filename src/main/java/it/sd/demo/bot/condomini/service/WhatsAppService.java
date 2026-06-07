@@ -136,7 +136,7 @@ public class WhatsAppService {
         }
 
         if (STEP_NUOVA_SEGNALAZIONE.equals(userSession.step)) {
-            userSession.step = null;
+            userSession.step = STEP_NUOVA_SEGNALAZIONE;
         }
 
         String contestoCondominio = condominioAiDao.getContestoAiByCondominio(utente.getIdCondominio());
@@ -157,6 +157,8 @@ public class WhatsAppService {
         salvaConversazione(userSession, testoMessaggio, rispostaPerUtente);
 
         if (aiResponse.isOpenTicket()) {
+        	userSession.step = null;
+        	
         	String categoria = normalizeCategoria(aiResponse.getCategory());
         	String priorita = normalizePriorita(aiResponse.getPriority());
         	String descrizioneTicket =
