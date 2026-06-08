@@ -240,9 +240,8 @@ public class VoiceController {
                 <Record action="/voice/recording"
                         method="POST"
                         maxLength="20"
-                        timeout="2"
-                        playBeep="false"
-                        trim="trim-silence"/>
+                        timeout="1"
+                        playBeep="false"/>
             </Response>
             """.formatted(
                 TWILIO_VOICE,
