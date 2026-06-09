@@ -25,13 +25,14 @@ public class TwilioCallService {
 	private final RestTemplate restTemplate = new RestTemplate();
 
 	public void notifyTicketCreated(String toNumber,
+			String nomeFornitore,
 			Long idTicket,
 			String condominio,
 			String categoria,
 			String priorita) {
 
 		String message = """
-				Buongiorno, sono Lucrezia.
+				Ciao %s. sono Lucrezia.
 				Ti è stato assegnato un nuovo ticket numero %d.
 				Condominio %s.
 				Categoria %s.
@@ -39,6 +40,7 @@ public class TwilioCallService {
 				Ti ho inviato un messaggio WhatsApp con tutti i dettagli.
 				Grazie.
 				""".formatted(
+						nomeFornitore,
 						idTicket,
 						condominio,
 						categoria,
@@ -53,6 +55,7 @@ public class TwilioCallService {
 				</Say>
 				</Response>
 				""".formatted(escapeXml(message));
+		System.out.println("twiml --> " + twiml);
 
 		String url = "https://api.twilio.com/2010-04-01/Accounts/"
 				+ accountSid

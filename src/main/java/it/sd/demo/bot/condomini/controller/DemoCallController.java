@@ -14,6 +14,7 @@ public class DemoCallController {
 
     @GetMapping("/call-ticket")
     public String callTicket(@RequestParam String telefono,
+                             @RequestParam String nomeFornitore,
                              @RequestParam Long idTicket,
                              @RequestParam String condominio,
                              @RequestParam String categoria,
@@ -23,13 +24,14 @@ public class DemoCallController {
 
         twilioCallService.notifyTicketCreated(
                 numero,
+                nomeFornitore,
                 idTicket,
                 condominio,
                 categoria,
                 priorita
         );
 
-        return "Chiamata inviata verso " + numero;
+        return "Chiamata inviata";
     }
 
     private String normalizeItalianPhone(String telefono) {
