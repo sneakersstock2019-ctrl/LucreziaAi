@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -238,7 +239,7 @@ public class WhatsAppService {
         userSession.step = STEP_NUOVA_SEGNALAZIONE;
         userSession.tentativiComprensione++;
 
-        if (userSession.tentativiComprensione >= 10) {
+        if (userSession.tentativiComprensione >= 5) {
 
             Long idTicket = ticketDao.insertTicket(
                     utente.getIdCondominio(),
@@ -343,7 +344,9 @@ public class WhatsAppService {
     }
 
     private void invioMessaggio(String to, String testoMessaggio) {
-        try {
+    	ResponseEntity<String> responseEntity = null;
+    	
+    	try {
             Map<String, Object> text = Map.of("body", testoMessaggio);
 
             Map<String, Object> payload = Map.of(
@@ -365,7 +368,8 @@ public class WhatsAppService {
             System.out.println("Invoco Api Meta Messages (POST): " + url);
             System.out.println("Payload: " + payload);
 
-            restTemplate.postForEntity(url, httpEntity, String.class);
+            responseEntity = restTemplate.postForEntity(url, httpEntity, String.class);
+            System.out.println("Response (" + responseEntity.getStatusCode() + "): " + responseEntity.getBody());
 
         } catch (Exception e) {
             e.printStackTrace();

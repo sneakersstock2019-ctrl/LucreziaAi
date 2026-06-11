@@ -47,7 +47,6 @@ public class OpenAIService {
             messaggiOpenAIRequestMessage = new ArrayList<>();
             
             systemPrompt = buildSystemPrompt(session, utente, contestoCondominio);
-            System.out.println("systemPrompt: " + systemPrompt);
             messaggiOpenAIRequestMessage.add(new OpenAIRequestMessage(
                     "system",
                     systemPrompt
@@ -82,8 +81,6 @@ public class OpenAIService {
             httpEntity = new HttpEntity<>(openAIRequest, httpHeaders);
 
             System.out.println("Invoco Api OpenAI Messages (POST): https://api.openai.com/v1/chat/completions");
-            System.out.println("Headers: " + httpHeaders);
-            System.out.println("Payload: " + openAIRequest);
             response = restTemplate.postForEntity(
                             "https://api.openai.com/v1/chat/completions",
                             httpEntity,
