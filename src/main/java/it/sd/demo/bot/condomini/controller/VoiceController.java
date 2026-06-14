@@ -448,7 +448,7 @@ public class VoiceController {
                 <Record action="/voice/recording"
 	                    method="POST"
 	                    maxLength="30"
-	                    timeout="1"
+	                    timeout="2"
 	                    playBeep="false"
 	                    trim="trim-silence"/>
             </Response>
