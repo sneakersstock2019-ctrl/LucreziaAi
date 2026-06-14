@@ -144,7 +144,7 @@ public class WhatsAppService {
             userSession.step = STEP_SCELTA_TICKET;
 
             invioMessaggio(from,
-                    "Ciao " + nomeUtente + ", sono Lucrezia, l'assistente virtuale del condominio 😊\n\n" +
+                    "Ciao " + nomeUtente + ", sono Lucrezia, l'assistente virtuale del tuo condominio 😊\n\n" +
                             "Vedo che hai già una o più segnalazioni aperte.\n\n" +
                             "Vuoi:\n" +
                             "1️⃣ conoscere lo stato dei ticket aperti\n" +
@@ -218,7 +218,7 @@ public class WhatsAppService {
                     Numero ticket: #%d
 
                     Monitora qui:
-                    https://demo-condomini.it/ticket/%d
+                    https://lucreziadashboard-production.up.railway.app/LucreziaDashboard/ticket/open/%d
                     """.formatted(idTicket, idTicket);
 
             resetSessioneDopoTicket(userSession);
@@ -271,7 +271,7 @@ public class WhatsAppService {
                             "Ticket aperto correttamente ✅\n" +
                             "Numero ticket: #" + idTicket + "\n\n" +
                             "Puoi monitorarlo qui:\n" +
-                            "https://demo-condomini.it/ticket/" + idTicket;
+                            "https://lucreziadashboard-production.up.railway.app/LucreziaDashboard/ticket/open/" + idTicket;
 
             resetSessioneDopoTicket(userSession);
         }
@@ -290,7 +290,7 @@ public class WhatsAppService {
             invioMessaggio(from,
                     "Certo 😊\n" +
                             "Puoi monitorare lo stato delle tue segnalazioni da qui:\n\n" +
-                            "https://demo-condomini.it/ticket?telefono=" + from
+                            "https://lucreziadashboard-production.up.railway.app/LucreziaDashboard"
             );
 
             userSession.step = null;

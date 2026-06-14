@@ -1,8 +1,14 @@
 package it.sd.demo.bot.condomini.controller;
 
 import java.io.File;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import it.sd.demo.bot.condomini.bean.AIResponse;
 import it.sd.demo.bot.condomini.bean.ChatMessage;
@@ -108,10 +114,8 @@ public class VoiceController {
                 session.registrazioniAudio.add(recordingUrl + ".mp3");
             }
             
-            return buildProcessingRedirectResponse(
-                    "Perfetto, ho ricevuto la richiesta. Dammi solo un secondo, verifico subito."
-            );
-
+            return buildProcessingRedirectResponse(getRandomProcessingMessage());
+            
         } catch (Exception e) {
             e.printStackTrace();
 
@@ -444,7 +448,7 @@ public class VoiceController {
                 <Record action="/voice/recording"
 	                    method="POST"
 	                    maxLength="30"
-	                    timeout="2"
+	                    timeout="1"
 	                    playBeep="false"
 	                    trim="trim-silence"/>
             </Response>
@@ -579,4 +583,22 @@ public class VoiceController {
                 escapeXml(message)
         );
     }
+    
+    private String getRandomProcessingMessage() {
+        return PROCESSING_MESSAGES.get(ThreadLocalRandom.current().nextInt(PROCESSING_MESSAGES.size()));
+    }
+    
+    private static final List<String> PROCESSING_MESSAGES = List.of(
+            "Perfetto, controllo subito.",
+            "Va bene, verifico un attimo.",
+            "Ho capito, dammi solo qualche secondo.",
+            "Ricevuto, controllo subito la situazione.",
+            "Grazie, verifico subito i dettagli.",
+            "Perfetto, sto controllando.",
+            "Va bene, vedo subito come aiutarti.",
+            "Ho preso nota, un momento soltanto.",
+            "D'accordo, faccio una verifica veloce.",
+            "Ok, controllo e ti rispondo subito."
+    );
+    
 }
