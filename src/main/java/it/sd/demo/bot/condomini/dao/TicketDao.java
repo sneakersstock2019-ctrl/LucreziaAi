@@ -96,13 +96,15 @@ public class TicketDao {
 
         String sql = """
             SELECT
-                t.id,
-                t.categoria,
-                t.priorita,
-                t.descrizione,
-                t.data_ultimo_aggiornamento,
-                st.codice AS stato_codice,
-                st.descrizione AS stato_descrizione
+			    t.id,
+			    t.categoria,
+			    t.priorita,
+			    t.descrizione,
+			    t.data_ultimo_aggiornamento,
+			    t.data_intervento_prevista,
+			    st.codice AS stato_codice,
+			    st.descrizione AS stato_descrizione,
+			    f.nome AS nome_fornitore
             FROM ticket t
             JOIN stati_ticket st ON st.id = t.id_stato
             WHERE t.id = ?
