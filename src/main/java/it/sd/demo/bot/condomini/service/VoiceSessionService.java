@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
 import it.sd.demo.bot.condomini.bean.UserSession;
+import it.sd.demo.bot.condomini.bean.VoiceSessionStep;
 
 @Service
 public class VoiceSessionService {
@@ -22,7 +23,7 @@ public class VoiceSessionService {
             session = new UserSession();
 
             session.nome = "Condomino";
-            session.step = "VOICE";
+            session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
             session.primoMessaggio = true;
 
             sessions.put(phoneNumber, session);

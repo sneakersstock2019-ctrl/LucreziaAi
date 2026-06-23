@@ -85,7 +85,7 @@ public class VoiceController {
         if (!ticketAperti.isEmpty()) {
 
             session.haTicketAperti = true;
-            session.setStep(VoiceSessionStep.WAIT_TICKET_CHOICE);
+            session.setVoiceSessionStep(VoiceSessionStep.WAIT_TICKET_CHOICE);
             session.setOpenTicketIds(
                     ticketAperti.stream()
                             .map(TicketStatusInfo::getId)
@@ -100,7 +100,7 @@ public class VoiceController {
         }
 
         session.haTicketAperti = false;
-        session.setStep(VoiceSessionStep.NEW_TICKET);
+        session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
 
         return buildRecordResponse(
                 "Ciao " + utente.getNome()
@@ -297,11 +297,11 @@ public class VoiceController {
             );
         }
         
-        if (session.getStep() == VoiceSessionStep.WAIT_TICKET_CHOICE) {
+        if (session.getVoiceSessionStep() == VoiceSessionStep.WAIT_TICKET_CHOICE) {
             return gestisciSceltaTicket(phone, utente, session, speechResult);
         }
 
-        if (session.getStep() == VoiceSessionStep.WAIT_TICKET_STATUS_DETAIL) {
+        if (session.getVoiceSessionStep() == VoiceSessionStep.WAIT_TICKET_STATUS_DETAIL) {
             return buildRecordResponse(
                     "Per ora posso leggere automaticamente lo stato solo quando c'è una singola segnalazione aperta. "
                             + "Mi dica pure se vuole aprire una nuova segnalazione."
@@ -647,7 +647,7 @@ public class VoiceController {
     		return handleTicketStatus(phone, session);
 
     	case NEW_TICKET:
-    		session.setStep(VoiceSessionStep.NEW_TICKET);
+    		session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
     		session.tentativiComprensione = 0;
     		session.cronologiaMessaggi.clear();
 
@@ -714,7 +714,7 @@ public class VoiceController {
     	}
 
     	if (session.getOpenTicketIds().size() > 1) {
-    		session.setStep(VoiceSessionStep.WAIT_TICKET_STATUS_DETAIL);
+    		session.setVoiceSessionStep(VoiceSessionStep.WAIT_TICKET_STATUS_DETAIL);
 
     		return buildRecordResponse(
     				"Vedo che ha più segnalazioni aperte. "

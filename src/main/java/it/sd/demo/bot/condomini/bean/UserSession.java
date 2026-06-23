@@ -28,7 +28,9 @@ public class UserSession {
     
     public String ultimaRegistrazioneAudio;
     
-    private VoiceSessionStep step;
+    private VoiceSessionStep voiceSessionStep;
+    
+    public String step;
     
     private Long condominoId;
     
