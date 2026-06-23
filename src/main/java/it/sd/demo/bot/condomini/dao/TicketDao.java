@@ -249,4 +249,38 @@ public class TicketDao {
             ps.executeUpdate();
         }
     }
+    
+    public List<Long> findTicketApertiByUtente(Long idUtente) {
+
+        String sql = """
+            SELECT t.id
+            FROM ticket t
+            JOIN stati_ticket st ON st.id = t.id_stato
+            WHERE t.id_utente = ?
+              AND st.codice NOT IN ('CHIUSO', 'ANNULLATO')
+            ORDER BY t.data_apertura DESC
+            """;
+
+        List<Long> result = new ArrayList<>();
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(1, idUtente);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    result.add(rs.getLong("id"));
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
 }

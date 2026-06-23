@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.sd.demo.bot.condomini.bean.AIResponse;
 import it.sd.demo.bot.condomini.bean.AllegatoTemporaneo;
 import it.sd.demo.bot.condomini.bean.ChatMessage;
+import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
 import it.sd.demo.bot.condomini.bean.UserSession;
 import it.sd.demo.bot.condomini.bean.Utente;
 import it.sd.demo.bot.condomini.dao.AllegatoDao;
@@ -154,7 +155,7 @@ public class WhatsAppService {
         }
 
         if (STEP_SCELTA_TICKET.equals(userSession.step)) {
-            gestisciSceltaTicket(from, testoMessaggio, nomeUtente, userSession);
+            gestisciSceltaTicket(from, testoMessaggio, nomeUtente, userSession, utente);
             return;
         }
 
@@ -211,15 +212,12 @@ public class WhatsAppService {
             );
 
             rispostaPerUtente += """
-
-                    
                     Ticket aperto correttamente ✅
 
                     Numero ticket: #%d
 
-                    🔎 Monitora qui:
-                    https://lucreziadashboard-production.up.railway.app/LucreziaDashboard/condomino/ticket/open/%d
-                    """.formatted(idTicket, idTicket);
+                    Per conoscere lo stato della segnalazione puoi scrivermi qui su WhatsApp oppure chiamarmi.
+                    """.formatted(idTicket);
 
             resetSessioneDopoTicket(userSession);
 
@@ -270,8 +268,7 @@ public class WhatsAppService {
                             "Per non farti perdere altro tempo, ho aperto una segnalazione generica riportando la descrizione che mi hai fornito.\n\n" +
                             "Ticket aperto correttamente ✅\n" +
                             "Numero ticket: #" + idTicket + "\n\n" +
-                            "🔎 Puoi monitorarlo qui:\n" +
-                            "https://lucreziadashboard-production.up.railway.app/LucreziaDashboard/condomino/ticket/open/" + idTicket;
+                            "Per conoscere lo stato della segnalazione puoi scrivermi qui su WhatsApp oppure chiamarmi.";
 
             resetSessioneDopoTicket(userSession);
         }
@@ -282,16 +279,49 @@ public class WhatsAppService {
     private void gestisciSceltaTicket(String from,
                                       String testoMessaggio,
                                       String nomeUtente,
-                                      UserSession userSession) {
+                                      UserSession userSession,
+                                      Utente utente) {
 
         String msg = testoMessaggio.toLowerCase();
 
         if (msg.contains("1") || msg.contains("stato") || msg.contains("ticket")) {
-            invioMessaggio(from,
-                    "Certo 😊\n" +
-                            "🔎 Puoi monitorare lo stato delle tue segnalazioni da qui:\n\n" +
-                            "https://lucreziadashboard-production.up.railway.app/LucreziaDashboard"
-            );
+        	List<Long> ticketIds = ticketDao.findTicketApertiByUtente(utente.getId());
+        	
+        	StringBuilder risposta = new StringBuilder();
+
+        	risposta.append("Ecco lo stato delle tue segnalazioni aperte 😊\n\n");
+
+        	for (Long idTicket : ticketIds) {
+
+        	    TicketStatusInfo ticket =
+        	            ticketDao.findTicketStatusById(idTicket);
+
+        	    risposta.append("🎫 Ticket #")
+        	             .append(ticket.getId())
+        	             .append("\n");
+
+        	    risposta.append("📌 Stato: ")
+        	             .append(ticket.getStatoDescrizione());
+
+        	    if (ticket.getNomeFornitore() != null
+        	            && !ticket.getNomeFornitore().isBlank()) {
+
+        	        risposta.append("\n👷 Fornitore: ")
+        	                 .append(ticket.getNomeFornitore());
+        	    }
+
+        	    if (ticket.getDataInterventoPrevista() != null) {
+
+        	        risposta.append("\n📅 Intervento previsto: ")
+        	                 .append(ticket.getDataInterventoPrevista());
+        	    }
+
+        	    risposta.append("\n\n");
+        	}
+
+        	risposta.append("Se desideri aprire una nuova segnalazione, descrivimi pure il problema.");
+
+        	invioMessaggio(from, risposta.toString());
 
             userSession.step = null;
             return;
