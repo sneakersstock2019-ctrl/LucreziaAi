@@ -42,6 +42,8 @@ public class VoiceController {
     private final TicketConversazioneDao ticketConversazioneDao;
     private final PhoneUtils phoneUtils;
     private final TwilioService twilioService;
+    
+    private static final String TEST_MEDIA_STREAM_PHONE = "393492123304";
 
     @RequestMapping(
             value = "/incoming",
@@ -102,6 +104,13 @@ public class VoiceController {
 
         session.haTicketAperti = false;
         session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
+        
+        if (TEST_MEDIA_STREAM_PHONE.equals(phone)) {
+            return buildRecordResponseWithMediaStream(
+                    "Ciao " + utente.getNome()
+                    + ", sono la nuova Lucrezia. Mi descriva pure il problema."
+            );
+        }
 
         return buildRecordResponse(
                 "Ciao " + utente.getNome()
@@ -484,6 +493,30 @@ public class VoiceController {
 	                    timeout="2"
 	                    playBeep="false"
 	                    trim="trim-silence"/>
+            </Response>
+            """.formatted(
+                TWILIO_VOICE,
+                escapeXml(message)
+        );
+    }
+    
+    private String buildRecordResponseWithMediaStream(String message) {
+
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Response>
+                <Start>
+                    <Stream url="wss://demobotcondomini-production.up.railway.app/voice/media-stream">
+                        <Parameter name="source" value="LucreziaVoce"/>
+                    </Stream>
+                </Start>
+                <Say language="it-IT" voice="%s">%s</Say>
+                <Record action="/voice/recording"
+                        method="POST"
+                        maxLength="30"
+                        timeout="2"
+                        playBeep="false"
+                        trim="trim-silence"/>
             </Response>
             """.formatted(
                 TWILIO_VOICE,
