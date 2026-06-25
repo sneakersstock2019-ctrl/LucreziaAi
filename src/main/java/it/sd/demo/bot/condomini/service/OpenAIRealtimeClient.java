@@ -54,18 +54,6 @@ public class OpenAIRealtimeClient {
 
                     if ("session.updated".equals(type)) {
                         System.out.println("OPENAI REALTIME VOICE SESSION UPDATED");
-
-                        WebSocketClient currentClient = this;
-
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(700);
-                                sendInitialGreeting(currentClient);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }).start();
-
                         return;
                     }
 
@@ -196,7 +184,7 @@ public class OpenAIRealtimeClient {
         client.send(objectMapper.writeValueAsString(event));
     }
     
-    private void sendInitialGreeting(WebSocketClient client) throws Exception {
+    public void sendInitialGreeting(WebSocketClient client) throws Exception {
 
         Map<String, Object> userMessage = Map.of(
                 "type", "conversation.item.create",

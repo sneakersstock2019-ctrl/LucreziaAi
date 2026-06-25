@@ -21,9 +21,8 @@ import lombok.RequiredArgsConstructor;
 public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     private final OpenAIRealtimeClient openAIRealtimeClient;
-
+    private final Map<String, Boolean> greetingSent = new ConcurrentHashMap<>();
     private final Map<String, Integer> chunkCounter = new ConcurrentHashMap<>();
     private final Map<String, WebSocketClient> openAiClients = new ConcurrentHashMap<>();
     private final Map<String, WebSocketSession> twilioSessions = new ConcurrentHashMap<>();
@@ -62,6 +61,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
                 twilioSessions.put(streamSid, session);
+                greetingSent.put(streamSid, false);
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: start");
@@ -126,6 +126,18 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 WebSocketClient openAiClient = openAiClients.get(streamSid);
 
                 if (openAiClient != null && openAiClient.isOpen()) {
+
+                    if (!Boolean.TRUE.equals(greetingSent.get(streamSid))) {
+                        greetingSent.put(streamSid, true);
+
+                        try {
+                            openAIRealtimeClient.sendInitialGreeting(openAiClient);
+                            System.out.println("SALUTO INIZIALE INVIATO A OPENAI");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
                     openAIRealtimeClient.sendAudio(openAiClient, payload);
                 }
 
