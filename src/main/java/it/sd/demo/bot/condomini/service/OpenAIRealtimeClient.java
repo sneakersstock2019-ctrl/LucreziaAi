@@ -39,9 +39,12 @@ public class OpenAIRealtimeClient {
 
             @Override
             public void onMessage(String message) {
+                System.out.println("########################################################");
+                System.out.println("OPENAI REALTIME RAW MESSAGE");
+                System.out.println(message);
+                System.out.println("########################################################");
+                
                 try {
-                	System.out.println("message --> " + message);
-                	
                     JsonNode root = objectMapper.readTree(message);
                     String type = root.path("type").asText();
 
@@ -100,8 +103,7 @@ public class OpenAIRealtimeClient {
                                         ),
                                         "transcription", Map.of(
                                                 "model", "gpt-realtime-whisper",
-                                                "language", "it",
-                                                "prompt", "Trascrizione telefonica italiana di un condomino che parla con Lucrezia, assistente del condominio."
+                                                "language", "it"
                                         ),
                                         "turn_detection", Map.of(
                                                 "type", "server_vad",
