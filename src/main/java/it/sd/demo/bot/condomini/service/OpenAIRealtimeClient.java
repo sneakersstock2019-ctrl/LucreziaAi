@@ -21,7 +21,7 @@ public class OpenAIRealtimeClient {
 
     public WebSocketClient createTranscriptionClient(String callSid) throws Exception {
 
-        URI uri = new URI("wss://api.openai.com/v1/realtime?model=gpt-realtime-whisper");
+        URI uri = new URI("wss://api.openai.com/v1/realtime?intent=transcription");
 
         WebSocketClient client = new WebSocketClient(uri) {
 
@@ -67,18 +67,26 @@ public class OpenAIRealtimeClient {
     private void sendSessionUpdate(WebSocketClient client) throws Exception {
 
         Map<String, Object> event = Map.of(
-                "type", "transcription_session.update",
+                "type", "session.update",
                 "session", Map.of(
-                        "input_audio_format", "g711_ulaw",
-                        "input_audio_transcription", Map.of(
-                                "model", "gpt-4o-transcribe",
-                                "language", "it"
-                        ),
-                        "turn_detection", Map.of(
-                                "type", "server_vad",
-                                "threshold", 0.5,
-                                "prefix_padding_ms", 300,
-                                "silence_duration_ms", 500
+                        "type", "transcription",
+                        "audio", Map.of(
+                                "input", Map.of(
+                                        "format", Map.of(
+                                                "type", "audio/pcmu"
+                                        ),
+                                        "transcription", Map.of(
+                                                "model", "gpt-realtime-whisper",
+                                                "language", "it",
+                                                "prompt", "Trascrizione telefonica italiana di un condomino che parla con Lucrezia, assistente del condominio."
+                                        ),
+                                        "turn_detection", Map.of(
+                                                "type", "server_vad",
+                                                "threshold", 0.5,
+                                                "prefix_padding_ms", 300,
+                                                "silence_duration_ms", 500
+                                        )
+                                )
                         )
                 )
         );
@@ -88,7 +96,11 @@ public class OpenAIRealtimeClient {
 
     public void sendAudio(WebSocketClient client, String twilioBase64Payload) {
 
-        if (client == null || !client.isOpen()) {
+        if (client == null) {
+            return;
+        }
+
+        if (!client.isOpen()) {
             return;
         }
 
@@ -99,6 +111,10 @@ public class OpenAIRealtimeClient {
             );
 
             client.send(objectMapper.writeValueAsString(event));
+
+        } catch (org.java_websocket.exceptions.WebsocketNotConnectedException e) {
+            // OpenAI ha già chiuso la socket: non è un errore bloccante per la demo.
+            System.out.println("OPENAI REALTIME non connesso, audio ignorato.");
 
         } catch (Exception e) {
             e.printStackTrace();
