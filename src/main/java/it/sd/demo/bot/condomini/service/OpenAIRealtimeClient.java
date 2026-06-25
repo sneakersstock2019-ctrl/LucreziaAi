@@ -55,11 +55,16 @@ public class OpenAIRealtimeClient {
                     if ("session.updated".equals(type)) {
                         System.out.println("OPENAI REALTIME VOICE SESSION UPDATED");
 
-                        try {
-                            sendInitialGreeting(this);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                        WebSocketClient currentClient = this;
+
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(700);
+                                sendInitialGreeting(currentClient);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }).start();
 
                         return;
                     }
