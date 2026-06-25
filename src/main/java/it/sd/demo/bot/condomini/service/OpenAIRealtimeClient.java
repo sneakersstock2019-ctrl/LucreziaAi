@@ -193,20 +193,34 @@ public class OpenAIRealtimeClient {
     
     private void sendInitialGreeting(WebSocketClient client) throws Exception {
 
-        Map<String, Object> event = Map.of(
+        Map<String, Object> userMessage = Map.of(
+                "type", "conversation.item.create",
+                "item", Map.of(
+                        "type", "message",
+                        "role", "user",
+                        "content", new Object[]{
+                                Map.of(
+                                        "type", "input_text",
+                                        "text", "La chiamata è appena iniziata. Saluta il condomino e chiedi come puoi aiutarlo."
+                                )
+                        }
+                )
+        );
+
+        client.send(objectMapper.writeValueAsString(userMessage));
+
+        Map<String, Object> responseCreate = Map.of(
                 "type", "response.create",
                 "response", Map.of(
                         "modalities", new String[]{"audio"},
                         "instructions", """
-							Sei Lucrezia, assistente vocale del condominio.
-							
-							Inizia tu la conversazione.
-							
-							Saluta cordialmente il condomino.
-							Presentati come Lucrezia.
-							Chiedi come puoi aiutarlo oggi.
-							
-							Parla come una receptionist umana.
+                            Inizia la telefonata.
+                            Saluta cordialmente il condomino.
+                            Presentati come Lucrezia.
+                            Di' che sei l'assistente vocale del condominio.
+                            Chiedi come puoi aiutarlo oggi.
+                            Usa una sola frase breve, naturale e professionale.
+                            Parla come una receptionist umana.
 							Usa una frase breve.
 							Non essere robotica.
 							Non ripetere il nome più di una volta.
@@ -214,7 +228,7 @@ public class OpenAIRealtimeClient {
                 )
         );
 
-        client.send(objectMapper.writeValueAsString(event));
+        client.send(objectMapper.writeValueAsString(responseCreate));
     }
 
     public void sendAudio(WebSocketClient client, String twilioBase64Payload) {
