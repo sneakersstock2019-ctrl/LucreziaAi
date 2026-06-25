@@ -60,8 +60,7 @@ public class OpenAIRealtimeClient {
                     }
 
                     if ("error".equals(type)) {
-                        System.out.println("OPENAI REALTIME ERROR EVENT:");
-                        System.out.println(message);
+                        System.out.println(root.path("error").asText());
                     }
 
                 } catch (Exception e) {
