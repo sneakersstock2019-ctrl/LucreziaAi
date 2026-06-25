@@ -104,12 +104,6 @@ public class OpenAIRealtimeClient {
                                         "transcription", Map.of(
                                                 "model", "gpt-realtime-whisper",
                                                 "language", "it"
-                                        ),
-                                        "turn_detection", Map.of(
-                                                "type", "server_vad",
-                                                "threshold", 0.5,
-                                                "prefix_padding_ms", 300,
-                                                "silence_duration_ms", 500
                                         )
                                 )
                         )
