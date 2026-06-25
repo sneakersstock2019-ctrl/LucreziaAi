@@ -54,6 +54,7 @@ public class OpenAIRealtimeClient {
 
                     if ("session.updated".equals(type)) {
                         System.out.println("OPENAI REALTIME VOICE SESSION UPDATED");
+                        listener.onSessionReady();
                         return;
                     }
 

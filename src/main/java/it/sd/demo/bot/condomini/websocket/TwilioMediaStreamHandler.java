@@ -75,6 +75,20 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 OpenAIRealtimeAudioListener listener = new OpenAIRealtimeAudioListener() {
 
+                	@Override
+                	public void onSessionReady() {
+                	    try {
+                	        WebSocketClient client = openAiClients.get(streamSid);
+
+                	        if (client != null && client.isOpen()) {
+                	            openAIRealtimeClient.sendInitialGreeting(client);
+                	            System.out.println("SALUTO INIZIALE INVIATO DOPO SESSION READY");
+                	        }
+                	    } catch (Exception e) {
+                	        e.printStackTrace();
+                	    }
+                	}
+                	
                     @Override
                     public void onAudioDelta(String base64Audio) {
                         sendAudioToTwilio(streamSid, base64Audio);
@@ -103,9 +117,9 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 WebSocketClient openAiClient = openAIRealtimeClient.createVoiceClient(callSid, nome, condominio, listener);
 
-                openAiClient.connectBlocking();
-
                 openAiClients.put(streamSid, openAiClient);
+
+                openAiClient.connect();
             }
 
             case "media" -> {
@@ -153,6 +167,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
+                greetingSent.remove(streamSid);
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: stop");
@@ -214,6 +229,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
+            greetingSent.remove(streamSid);
         }
 
         System.out.println("############################");
@@ -232,6 +248,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
+            greetingSent.remove(streamSid);
         }
 
         System.out.println("############################");
