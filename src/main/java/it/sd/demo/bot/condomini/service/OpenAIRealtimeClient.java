@@ -40,32 +40,28 @@ public class OpenAIRealtimeClient {
             @Override
             public void onMessage(String message) {
                 try {
+                	System.out.println("message --> " + message);
+                	
                     JsonNode root = objectMapper.readTree(message);
                     String type = root.path("type").asText();
 
                     System.out.println("OPENAI REALTIME TYPE = " + type);
 
+                    if ("error".equals(type)) {
+                        System.out.println("OPENAI REALTIME ERROR EVENT RAW = " + message);
+                        return;
+                    }
+
                     if (root.has("transcript")) {
-                        System.out.println("############################");
-                        System.out.println("OPENAI REALTIME TRANSCRIPT:");
-                        System.out.println(root.path("transcript").asText());
-                        System.out.println("############################");
+                        System.out.println("OPENAI REALTIME TRANSCRIPT = " + root.path("transcript").asText());
                     }
 
                     if (root.has("delta")) {
-                        String delta = root.path("delta").asText();
-                        if (delta != null && !delta.isBlank()) {
-                            System.out.println("OPENAI REALTIME DELTA = " + delta);
-                        }
-                    }
-
-                    if ("error".equals(type)) {
-                        System.out.println(root.path("error").asText());
+                        System.out.println("OPENAI REALTIME DELTA = " + root.path("delta").asText());
                     }
 
                 } catch (Exception e) {
-                    System.out.println("OPENAI REALTIME RAW MESSAGE:");
-                    System.out.println(message);
+                    System.out.println("OPENAI REALTIME RAW MESSAGE = " + message);
                 }
             }
 
