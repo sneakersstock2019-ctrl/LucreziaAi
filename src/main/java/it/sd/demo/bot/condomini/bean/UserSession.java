@@ -18,8 +18,6 @@ public class UserSession {
 
     public int tentativiComprensione = 0;
 
-    public boolean haTicketAperti = false;
-    
     public boolean primoMessaggio = true;
     
     public Long idTicketAperto;
@@ -35,5 +33,7 @@ public class UserSession {
     private Long condominoId;
     
     private List<Long> openTicketIds;
+    
+    private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
     
 }

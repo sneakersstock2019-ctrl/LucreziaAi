@@ -137,7 +137,6 @@ public class WhatsAppService {
         }
 
         boolean haTicketAperti = ticketDao.hasTicketApertiByUtente(utente.getId());
-        userSession.haTicketAperti = haTicketAperti;
 
         if (userSession.step == null 
                 && userSession.cronologiaMessaggi.isEmpty()
@@ -369,7 +368,6 @@ public class WhatsAppService {
     }
 
     private void resetSessioneDopoTicket(UserSession userSession) {
-        userSession.haTicketAperti = true;
         userSession.step = null;
         userSession.tentativiComprensione = 0;
         userSession.cronologiaMessaggi.clear();

@@ -1,5 +1,7 @@
 package it.sd.demo.bot.condomini.websocket;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,6 +14,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
+import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TicketDao;
 import it.sd.demo.bot.condomini.service.LucreziaRealtimeToolService;
 import it.sd.demo.bot.condomini.service.OpenAIRealtimeAudioListener;
 import it.sd.demo.bot.condomini.service.OpenAIRealtimeClient;
@@ -22,13 +27,15 @@ import lombok.RequiredArgsConstructor;
 public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     private final OpenAIRealtimeClient openAIRealtimeClient;
-    private final Map<String, Boolean> greetingSent = new ConcurrentHashMap<>();
+    private final LucreziaRealtimeToolService toolService;
+    private final TicketDao ticketDao;
+
     private final Map<String, Integer> chunkCounter = new ConcurrentHashMap<>();
     private final Map<String, WebSocketClient> openAiClients = new ConcurrentHashMap<>();
     private final Map<String, WebSocketSession> twilioSessions = new ConcurrentHashMap<>();
     private final Map<String, String> sessionToStreamSid = new ConcurrentHashMap<>();
-    private final LucreziaRealtimeToolService toolService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -42,7 +49,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
         JsonNode root = objectMapper.readTree(message.getPayload());
-
         String event = root.path("event").asText();
 
         switch (event) {
@@ -54,17 +60,33 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             case "start" -> {
                 String streamSid = root.path("start").path("streamSid").asText();
                 String callSid = root.path("start").path("callSid").asText();
-                
+
                 JsonNode params = root.path("start").path("customParameters");
+
                 String phone = params.path("phone").asText();
                 String nome = params.path("nome").asText();
                 String condominio = params.path("condominio").asText();
                 Long idUtente = params.path("idUtente").asLong();
 
+                List<TicketStatusInfo> ticketAperti = new ArrayList<>();
+
+                try {
+                    ticketAperti = ticketDao.findOpenTicketsByUtente(idUtente);
+                } catch (Exception e) {
+                    System.out.println("Errore recupero ticket aperti realtime:");
+                    e.printStackTrace();
+                }
+
+                VoiceContext context = new VoiceContext();
+                context.setPhone(phone);
+                context.setNome(nome);
+                context.setCondominio(condominio);
+                context.setIdUtente(idUtente);
+                context.setTicketAperti(ticketAperti);
+
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
                 twilioSessions.put(streamSid, session);
-                greetingSent.put(streamSid, false);
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: start");
@@ -74,30 +96,27 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 System.out.println("PARAM NOME = " + nome);
                 System.out.println("PARAM CONDOMINIO = " + condominio);
                 System.out.println("PARAM ID_UTENTE = " + idUtente);
+                System.out.println("TICKET APERTI = " + ticketAperti.size());
                 System.out.println("Apro connessione OpenAI Realtime Voice...");
                 System.out.println("############################");
 
                 OpenAIRealtimeAudioListener listener = new OpenAIRealtimeAudioListener() {
 
-                	@Override
-                	public void onSessionReady() {
-                	    try {
-                	        WebSocketClient client = openAiClients.get(streamSid);
+                    @Override
+                    public void onSessionReady() {
+                        try {
+                            WebSocketClient client = openAiClients.get(streamSid);
 
-                	        if (client != null && client.isOpen()) {
-                	        	openAIRealtimeClient.sendInitialGreeting(
-                	        			client,
-                	        	        nome,
-                	        	        condominio,
-                	        	        false
-                	        	);
-                	            System.out.println("SALUTO INIZIALE INVIATO DOPO SESSION READY");
-                	        }
-                	    } catch (Exception e) {
-                	        e.printStackTrace();
-                	    }
-                	}
-                	
+                            if (client != null && client.isOpen()) {
+                                openAIRealtimeClient.sendInitialGreeting(client, context);
+                                System.out.println("SALUTO INIZIALE INVIATO DOPO SESSION READY");
+                            }
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
                     @Override
                     public void onAudioDelta(String base64Audio) {
                         sendAudioToTwilio(streamSid, base64Audio);
@@ -122,7 +141,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                         System.out.println("OPENAI REALTIME LISTENER ERROR:");
                         System.out.println(rawMessage);
                     }
-                    
+
                     @Override
                     public void onFunctionCall(String callId, String name, String arguments) {
 
@@ -144,10 +163,15 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     }
                 };
 
-                WebSocketClient openAiClient = openAIRealtimeClient.createVoiceClient(callSid, nome, condominio, listener);
+                WebSocketClient openAiClient =
+                        openAIRealtimeClient.createVoiceClient(
+                                callSid,
+                                nome,
+                                condominio,
+                                listener
+                        );
 
                 openAiClients.put(streamSid, openAiClient);
-
                 openAiClient.connect();
             }
 
@@ -184,7 +208,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
-                greetingSent.remove(streamSid);
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: stop");
@@ -246,7 +269,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
-            greetingSent.remove(streamSid);
         }
 
         System.out.println("############################");
@@ -265,7 +287,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
-            greetingSent.remove(streamSid);
         }
 
         System.out.println("############################");

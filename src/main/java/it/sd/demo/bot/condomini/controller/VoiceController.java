@@ -52,6 +52,7 @@ public class VoiceController {
     )
     public String incomingCall(@RequestParam(value = "From", required = false) String from) {
 
+    	boolean haTicketAperti = false;
         String phone = phoneUtils.normalizePhone(from);
 
         System.out.println("############################");
@@ -86,7 +87,7 @@ public class VoiceController {
 
         if (!ticketAperti.isEmpty()) {
 
-            session.haTicketAperti = true;
+            haTicketAperti = true;
             session.setVoiceSessionStep(VoiceSessionStep.WAIT_TICKET_CHOICE);
             session.setOpenTicketIds(
                     ticketAperti.stream()
@@ -102,7 +103,7 @@ public class VoiceController {
             	);
         }
 
-        session.haTicketAperti = false;
+        haTicketAperti = false;
         session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
         
         if (TEST_MEDIA_STREAM_PHONE.equals(phone)) {

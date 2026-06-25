@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.sd.demo.bot.condomini.bean.VoiceContext;
 import it.sd.demo.bot.condomini.prompt.LucreziaPromptBuilder;
 import lombok.RequiredArgsConstructor;
 
@@ -212,40 +213,38 @@ public class OpenAIRealtimeClient {
     }
 
     public void sendInitialGreeting(WebSocketClient client,
-                                    String nome,
-                                    String condominio,
-                                    boolean haTicketAperti) throws Exception {
+    		VoiceContext context) throws Exception {
 
-        String userText =
-                promptBuilder.buildInitialGreetingUserText(nome, condominio, haTicketAperti);
+    	String userText =
+    			promptBuilder.buildInitialGreetingUserText(context);
 
-        String instructions =
-                promptBuilder.buildInitialGreetingInstructions(condominio, haTicketAperti);
+    	String instructions =
+    			promptBuilder.buildInitialGreetingInstructions(context);
 
-        Map<String, Object> userMessage = Map.of(
-                "type", "conversation.item.create",
-                "item", Map.of(
-                        "type", "message",
-                        "role", "user",
-                        "content", new Object[]{
-                                Map.of(
-                                        "type", "input_text",
-                                        "text", userText
-                                )
-                        }
-                )
-        );
+    	Map<String, Object> userMessage = Map.of(
+    			"type", "conversation.item.create",
+    			"item", Map.of(
+    					"type", "message",
+    					"role", "user",
+    					"content", new Object[]{
+    							Map.of(
+    									"type", "input_text",
+    									"text", userText
+    									)
+    					}
+    					)
+    			);
 
-        client.send(objectMapper.writeValueAsString(userMessage));
+    	client.send(objectMapper.writeValueAsString(userMessage));
 
-        Map<String, Object> responseCreate = Map.of(
-                "type", "response.create",
-                "response", Map.of(
-                        "instructions", instructions
-                )
-        );
+    	Map<String, Object> responseCreate = Map.of(
+    			"type", "response.create",
+    			"response", Map.of(
+    					"instructions", instructions
+    					)
+    			);
 
-        client.send(objectMapper.writeValueAsString(responseCreate));
+    	client.send(objectMapper.writeValueAsString(responseCreate));
     }
 
     public void sendAudio(WebSocketClient client, String twilioBase64Payload) {
