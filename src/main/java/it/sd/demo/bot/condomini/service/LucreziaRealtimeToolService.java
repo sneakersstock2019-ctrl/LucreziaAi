@@ -21,8 +21,7 @@ public class LucreziaRealtimeToolService {
     public String getOpenTicketsJson(Long idUtente) {
 
         try {
-            List<TicketStatusInfo> tickets =
-                    ticketDao.findOpenTicketsByUtente(idUtente);
+            List<TicketStatusInfo> tickets = ticketDao.findOpenTicketsByUtente(idUtente);
 
             List<Map<String, Object>> ticketJson = tickets.stream()
                     .map(t -> Map.<String, Object>of(
