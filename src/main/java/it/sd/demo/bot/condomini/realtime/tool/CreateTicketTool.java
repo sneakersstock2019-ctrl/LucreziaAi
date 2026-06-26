@@ -43,6 +43,10 @@ public class CreateTicketTool implements LucreziaTool {
             }
 
             if (area.isBlank()) {
+                area = inferAreaFromDescription(descrizione);
+            }
+
+            if (area.isBlank()) {
                 return objectMapper.writeValueAsString(Map.of(
                         "esito", "MANCANO_INFORMAZIONI",
                         "campo", "area",
@@ -105,5 +109,35 @@ public class CreateTicketTool implements LucreziaTool {
 
     private String safe(String value) {
         return value == null ? "" : value.trim().toLowerCase();
+    }
+    
+    private String inferAreaFromDescription(String descrizione) {
+
+        if (descrizione == null) {
+            return "";
+        }
+
+        String text = descrizione.toLowerCase();
+
+        if (text.contains("parte comune")
+                || text.contains("area comune")
+                || text.contains("condominiale")
+                || text.contains("condominio")
+                || text.contains("scale")
+                || text.contains("ascensore")
+                || text.contains("garage comune")
+                || text.contains("androne")) {
+            return "comune";
+        }
+
+        if (text.contains("privata")
+                || text.contains("appartamento")
+                || text.contains("casa mia")
+                || text.contains("box privato")
+                || text.contains("cantina privata")) {
+            return "privata";
+        }
+
+        return "";
     }
 }
