@@ -24,10 +24,30 @@ public class LucreziaRealtimeToolService {
             List<TicketStatusInfo> tickets =
                     ticketDao.findOpenTicketsByUtente(idUtente);
 
+            List<Map<String, Object>> ticketJson = tickets.stream()
+                    .map(t -> Map.<String, Object>of(
+                            "id", t.getId(),
+                            "categoria", safe(t.getCategoria()),
+                            "priorita", safe(t.getPriorita()),
+                            "stato_codice", safe(t.getStatoCodice()),
+                            "stato_descrizione", safe(t.getStatoDescrizione()),
+                            "descrizione", safe(t.getDescrizione()),
+                            "fornitore", safe(t.getNomeFornitore()),
+                            "data_ultimo_aggiornamento",
+                                    t.getDataUltimoAggiornamento() == null
+                                            ? ""
+                                            : t.getDataUltimoAggiornamento().toString(),
+                            "data_intervento_prevista",
+                                    t.getDataInterventoPrevista() == null
+                                            ? ""
+                                            : t.getDataInterventoPrevista().toLocalDate().toString()
+                    ))
+                    .toList();
+
             return objectMapper.writeValueAsString(
                     Map.of(
-                            "numero_ticket_aperti", tickets.size(),
-                            "ticket", tickets
+                            "numero_ticket_aperti", ticketJson.size(),
+                            "ticket", ticketJson
                     )
             );
 
@@ -45,5 +65,9 @@ public class LucreziaRealtimeToolService {
                 return "{\"errore\":true}";
             }
         }
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 }
