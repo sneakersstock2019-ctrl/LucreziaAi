@@ -118,6 +118,16 @@ public class OpenAIRealtimeClient {
                         return;
                     }
                     
+                    if ("conversation.item.input_audio_transcription.completed".equals(type)) {
+                        String transcript = root.path("transcript").asText();
+
+                        if (transcript != null && !transcript.isBlank()) {
+                            listener.onUserTranscriptDone(transcript);
+                        }
+
+                        return;
+                    }
+                    
                     if ("response.output_audio.done".equals(type)) {
                         listener.onAssistantAudioDone();
                         System.out.println("OPENAI REALTIME TYPE = " + type);
@@ -202,7 +212,7 @@ public class OpenAIRealtimeClient {
 								
 								Non aprire una segnalazione se non è chiaro dove si trova il problema.
 								Dopo aver aperto la segnalazione, comunica il numero del ticket in modo naturale.
-								Se il tool createTicket restituisce richiedi_foto=true, informa il condomino che riceverà un messaggio WhatsApp sullo stesso numero per inviare eventuali foto.
+								Se il tool createTicket restituisce richiedi_foto=true, informa sempre il condomino che riceverà un messaggio WhatsApp sullo stesso numero per inviare eventuali foto.
                                 Se richiedi_foto=false, non parlare di fotografie.
                                 
                                 

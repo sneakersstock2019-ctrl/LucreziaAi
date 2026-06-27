@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TicketConversazioneDao;
 import it.sd.demo.bot.condomini.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
 
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class CreateTicketTool implements LucreziaTool {
 
     private final TicketDao ticketDao;
+    private final TicketConversazioneDao ticketConversazioneDao;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -75,6 +77,14 @@ public class CreateTicketTool implements LucreziaTool {
                     priorita,
                     "TELEFONO",
                     descrizioneCompleta
+            );
+            
+            ticketConversazioneDao.insertConversazione(
+                    ticketId,
+                    "TELEFONO",
+                    "AUDIO",
+                    context.getTrascrizioneChiamata(),
+                    null
             );
             
             boolean richiediFoto = shouldRequestPhoto(categoria, descrizioneCompleta);

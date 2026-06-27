@@ -17,4 +17,6 @@ public interface OpenAIRealtimeAudioListener {
     void onUserSpeechStarted();
 
     void onAssistantAudioDone();
+    
+    void onUserTranscriptDone(String transcript);
 }

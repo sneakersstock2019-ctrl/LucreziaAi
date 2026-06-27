@@ -133,6 +133,18 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                         System.out.println("LUCREZIA REALTIME:");
                         System.out.println(transcript);
                         System.out.println("############################");
+                        context.setTrascrizioneChiamata(
+                                context.getTrascrizioneChiamata()
+                                        + "\nLucrezia: " + transcript + "\n"
+                        );
+                    }
+                    
+                    @Override
+                    public void onUserTranscriptDone(String transcript) {
+                        context.setTrascrizioneChiamata(
+                                context.getTrascrizioneChiamata()
+                                        + "\nCondomino: " + transcript + "\n"
+                        );
                     }
 
                     @Override

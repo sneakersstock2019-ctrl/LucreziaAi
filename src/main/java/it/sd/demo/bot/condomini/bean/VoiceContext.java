@@ -15,6 +15,7 @@ public class VoiceContext {
     private Long idCondominio;
 
     private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
+    private String trascrizioneChiamata = "";
 
     public boolean hasTicketAperti() {
         return ticketAperti != null && !ticketAperti.isEmpty();
