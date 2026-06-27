@@ -265,17 +265,22 @@ public class OpenAIRealtimeClient {
                         },
                         "tool_choice", "auto",
                         "audio", Map.of(
-                                "input", Map.of(
-                                        "format", Map.of(
-                                                "type", "audio/pcmu"
-                                        ),
-                                        "turn_detection", Map.of(
-                                                "type", "server_vad",
-                                                "threshold", 0.5,
-                                                "prefix_padding_ms", 300,
-                                                "silence_duration_ms", 500
-                                        )
-                                ),
+                        		"input", Map.of(
+                        		        "format", Map.of(
+                        		                "type", "audio/pcmu"
+                        		        ),
+                        		        "transcription", Map.of(
+                        		                "model", "gpt-4o-transcribe",
+                        		                "language", "it",
+                        		                "prompt", "Trascrizione telefonica italiana di un condomino che parla con Lucrezia, assistente del condominio."
+                        		        ),
+                        		        "turn_detection", Map.of(
+                        		                "type", "server_vad",
+                        		                "threshold", 0.5,
+                        		                "prefix_padding_ms", 300,
+                        		                "silence_duration_ms", 500
+                        		        )
+                        		),
                                 "output", Map.of(
                                         "format", Map.of(
                                                 "type", "audio/pcmu"
