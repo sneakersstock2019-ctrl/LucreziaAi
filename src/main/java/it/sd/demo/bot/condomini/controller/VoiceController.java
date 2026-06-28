@@ -531,7 +531,8 @@ public class VoiceController {
                 escapeXml(utente.getNome()),
                 escapeXml(utente.getNomeCondominio()),
                 escapeXml(utente.getId().toString()),
-                escapeXml(utente.getIdCondominio().toString())
+                escapeXml(utente.getIdCondominio().toString()),
+                salutoVip
         );
     }
 
