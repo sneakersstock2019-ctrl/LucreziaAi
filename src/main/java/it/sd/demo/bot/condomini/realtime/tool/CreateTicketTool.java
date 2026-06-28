@@ -87,6 +87,8 @@ public class CreateTicketTool implements LucreziaTool {
                     null
             );
             
+            context.setIdTicketCreato(ticketId);
+            
             boolean richiediFoto = shouldRequestPhoto(categoria, descrizioneCompleta);
 
             if (ticketId == null) {

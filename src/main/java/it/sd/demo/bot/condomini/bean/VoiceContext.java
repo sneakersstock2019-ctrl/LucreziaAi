@@ -13,6 +13,9 @@ public class VoiceContext {
     private String condominio;
     private Long idUtente;
     private Long idCondominio;
+    private String callSid;
+    private Long idTicketCreato;
+    private String recordingUrl;
 
     private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
     private String trascrizioneChiamata = "";

@@ -20,6 +20,7 @@ import it.sd.demo.bot.condomini.dao.TicketDao;
 import it.sd.demo.bot.condomini.realtime.tool.LucreziaToolDispatcher;
 import it.sd.demo.bot.condomini.service.OpenAIRealtimeAudioListener;
 import it.sd.demo.bot.condomini.service.OpenAIRealtimeClient;
+import it.sd.demo.bot.condomini.service.TwilioRecordingService;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -31,6 +32,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private final OpenAIRealtimeClient openAIRealtimeClient;
     private final LucreziaToolDispatcher toolDispatcher;
     private final TicketDao ticketDao;
+    private final TwilioRecordingService twilioRecordingService;
 
     private final Map<String, Integer> chunkCounter = new ConcurrentHashMap<>();
     private final Map<String, WebSocketClient> openAiClients = new ConcurrentHashMap<>();
@@ -61,6 +63,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             case "start" -> {
                 String streamSid = root.path("start").path("streamSid").asText();
                 String callSid = root.path("start").path("callSid").asText();
+                twilioRecordingService.startRecording(callSid);
 
                 JsonNode params = root.path("start").path("customParameters");
 
@@ -86,6 +89,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 context.setIdUtente(idUtente);
                 context.setTicketAperti(ticketAperti);
                 context.setIdCondominio(idCondominio);
+                context.setCallSid(callSid);
 
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);

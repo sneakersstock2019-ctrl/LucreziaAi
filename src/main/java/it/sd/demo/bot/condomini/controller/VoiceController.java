@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -16,6 +17,7 @@ import it.sd.demo.bot.condomini.bean.TicketChoiceIntent;
 import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
 import it.sd.demo.bot.condomini.bean.UserSession;
 import it.sd.demo.bot.condomini.bean.Utente;
+import it.sd.demo.bot.condomini.bean.VoiceContext;
 import it.sd.demo.bot.condomini.bean.VoiceSessionStep;
 import it.sd.demo.bot.condomini.dao.CondominioAiDao;
 import it.sd.demo.bot.condomini.dao.TicketConversazioneDao;
@@ -23,6 +25,7 @@ import it.sd.demo.bot.condomini.dao.TicketDao;
 import it.sd.demo.bot.condomini.dao.UtenteDao;
 import it.sd.demo.bot.condomini.service.OpenAIService;
 import it.sd.demo.bot.condomini.service.TwilioService;
+import it.sd.demo.bot.condomini.service.VoiceCallContextRegistry;
 import it.sd.demo.bot.condomini.service.VoiceSessionService;
 import it.sd.demo.bot.condomini.util.PhoneUtils;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,7 @@ public class VoiceController {
     private final TicketConversazioneDao ticketConversazioneDao;
     private final PhoneUtils phoneUtils;
     private final TwilioService twilioService;
+    private final VoiceCallContextRegistry voiceCallContextRegistry;
     
     private static final String TEST_MEDIA_STREAM_PHONE = "3492123304";
 
@@ -52,7 +56,6 @@ public class VoiceController {
     )
     public String incomingCall(@RequestParam(value = "From", required = false) String from) {
 
-    	boolean haTicketAperti = false;
         String phone = phoneUtils.normalizePhone(from);
 
         System.out.println("############################");
@@ -87,7 +90,6 @@ public class VoiceController {
 
         if (!ticketAperti.isEmpty()) {
 
-            haTicketAperti = true;
             session.setVoiceSessionStep(VoiceSessionStep.WAIT_TICKET_CHOICE);
             session.setOpenTicketIds(
                     ticketAperti.stream()
@@ -107,7 +109,6 @@ public class VoiceController {
             	);
         }
 
-        haTicketAperti = false;
         session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
         
         if (TEST_MEDIA_STREAM_PHONE.equals(phone)) {
@@ -168,6 +169,28 @@ public class VoiceController {
                     "Mi scusi, ho avuto un problema nel capire il messaggio. Può ripetere?"
             );
         }
+    }
+    
+    @PostMapping(value = "/recording-realtime")
+    public ResponseEntity<String> recordingRealtime(@RequestParam("RecordingUrl") String recordingUrl,
+                                                    @RequestParam("CallSid") String callSid) {
+
+        System.out.println("############################");
+        System.out.println("TWILIO REALTIME RECORDING RECEIVED");
+        System.out.println("CALL SID = " + callSid);
+        System.out.println("RecordingUrl = " + recordingUrl);
+        System.out.println("############################");
+
+        VoiceContext context = voiceCallContextRegistry.get(callSid);
+
+        if (context != null && context.getIdTicketCreato() != null) {
+            ticketConversazioneDao.updateAudioUrlByTicket(
+                    context.getIdTicketCreato(),
+                    recordingUrl + ".mp3"
+            );
+        }
+
+        return ResponseEntity.ok("OK");
     }
     
     @PostMapping(value = "/process", produces = "application/xml")

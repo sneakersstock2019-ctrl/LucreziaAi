@@ -48,4 +48,24 @@ public class TicketConversazioneDao {
             e.printStackTrace();
         }
     }
+    
+    public void updateAudioUrlByTicket(Long idTicket, String audioUrl) {
+        String sql = """
+            UPDATE ticket_conversazione
+            SET audio_url = ?
+            WHERE id_ticket = ?
+              AND canale = 'TELEFONO'
+        """;
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, audioUrl);
+            ps.setLong(2, idTicket);
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
