@@ -51,8 +51,8 @@ public class TicketConversazioneDao {
     
     public void updateAudioUrlByTicket(Long idTicket, String audioUrl) {
         String sql = """
-            UPDATE ticket_conversazione
-            SET audio_url = ?
+            UPDATE ticket_conversazioni
+            SET url_audio = ?
             WHERE id_ticket = ?
               AND canale = 'TELEFONO'
         """;
