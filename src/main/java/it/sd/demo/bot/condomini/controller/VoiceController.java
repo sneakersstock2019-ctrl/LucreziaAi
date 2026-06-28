@@ -47,7 +47,7 @@ public class VoiceController {
     private final TwilioService twilioService;
     private final VoiceCallContextRegistry voiceCallContextRegistry;
     
-    private static final String TEST_MEDIA_STREAM_PHONE = "3492123304";
+    private static final String VIP_PHONE = "3492123304";
 
     @RequestMapping(
             value = "/incoming",
@@ -71,7 +71,7 @@ public class VoiceController {
                     "Buongiorno, sono Lucrezia. Il numero da cui sta chiamando non risulta abilitato al servizio."
             );
         }
-        
+
         UserSession session = voiceSessionService.getOrCreateVoiceSession(phone);
 
         session.nome = utente.getNome();
@@ -86,7 +86,8 @@ public class VoiceController {
 
         session.ultimaRegistrazioneAudio = null;
 
-        List<TicketStatusInfo> ticketAperti = ticketDao.findOpenTicketsByUtente(utente.getId());
+        List<TicketStatusInfo> ticketAperti =
+                ticketDao.findOpenTicketsByUtente(utente.getId());
 
         if (!ticketAperti.isEmpty()) {
 
@@ -96,30 +97,14 @@ public class VoiceController {
                             .map(TicketStatusInfo::getId)
                             .toList()
             );
-            
-            if (TEST_MEDIA_STREAM_PHONE.equals(phone)) {
-                return buildRealtimeConnectResponse(utente, phone);
-            }
 
-            return buildRecordResponse(
-            	    "Ciao " + utente.getNome()
-            	    + ". Vedo che hai una segnalazione aperta. "
-            	    + "Puoi dire stato segnalazione per ricevere aggiornamenti sul ticket esistente, "
-            	    + "oppure nuova segnalazione per comunicarne una nuova."
-            	);
+        } else {
+            session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
         }
 
-        session.setVoiceSessionStep(VoiceSessionStep.NEW_TICKET);
-        
-        if (TEST_MEDIA_STREAM_PHONE.equals(phone)) {
-            return buildRealtimeConnectResponse(utente, phone);
-        }
+        boolean salutoVip = VIP_PHONE.equals(phone);
 
-        return buildRecordResponse(
-                "Ciao " + utente.getNome()
-                        + ", sono Lucrezia. Mi descriva pure il problema."
-        );
-        
+        return buildRealtimeConnectResponse(utente, phone, salutoVip);
     }
 
     @PostMapping(value = "/recording", produces = "application/xml")
@@ -525,7 +510,7 @@ public class VoiceController {
         );
     }
     
-    private String buildRealtimeConnectResponse(Utente utente, String phone) {
+    private String buildRealtimeConnectResponse(Utente utente, String phone, boolean salutoVip) {
 
         return """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -537,6 +522,7 @@ public class VoiceController {
                         <Parameter name="condominio" value="%s"/>
                         <Parameter name="idUtente" value="%s"/>
                         <Parameter name="idCondominio" value="%s"/>
+                        <Parameter name="salutoVip" value="%s"/>
                     </Stream>
                 </Connect>
             </Response>

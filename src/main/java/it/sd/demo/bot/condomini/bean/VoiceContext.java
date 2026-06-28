@@ -19,6 +19,7 @@ public class VoiceContext {
     private String recordingSid;
     private boolean endCallRequested;
     private long lastUserSpeechTime;
+    private boolean salutoVip;
 
     private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
     private String trascrizioneChiamata = "";

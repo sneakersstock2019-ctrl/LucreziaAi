@@ -78,6 +78,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 String condominio = params.path("condominio").asText();
                 Long idUtente = params.path("idUtente").asLong();
                 Long idCondominio = params.path("idCondominio").asLong();
+                boolean salutoVip = params.path("salutoVip").asBoolean(false);
 
                 List<TicketStatusInfo> ticketAperti = new ArrayList<>();
 
@@ -97,6 +98,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 context.setIdCondominio(idCondominio);
                 context.setCallSid(callSid);
                 context.setRecordingSid(recordingSid);
+                context.setSalutoVip(salutoVip);
 
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
@@ -106,11 +108,13 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 System.out.println("MEDIA STREAM EVENT: start");
                 System.out.println("STREAM SID = " + streamSid);
                 System.out.println("CALL SID = " + callSid);
+                System.out.println("RECORDING_SID = " + recordingSid);
                 System.out.println("PARAM PHONE = " + phone);
                 System.out.println("PARAM NOME = " + nome);
                 System.out.println("PARAM CONDOMINIO = " + condominio);
                 System.out.println("PARAM ID_UTENTE = " + idUtente);
                 System.out.println("PARAM ID_CONDOMINIO = " + idCondominio);
+                System.out.println("PARAM SALUTO_VIP = " + salutoVip);
                 System.out.println("TICKET APERTI = " + ticketAperti.size());
                 System.out.println("Apro connessione OpenAI Realtime Voice...");
                 System.out.println("############################");
@@ -207,7 +211,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        scheduleSilenceCheck(streamSid, context, 15000);
+                        scheduleSilenceCheck(streamSid, context, 20000);
                     }
 
                     @Override
@@ -452,7 +456,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 e.printStackTrace();
             }
 
-        }, 2, TimeUnit.SECONDS);
+        }, 5, TimeUnit.SECONDS);
     }
     
     private void scheduleSilenceCheck(String streamSid,

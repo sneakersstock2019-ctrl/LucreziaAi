@@ -302,55 +302,76 @@ public class LucreziaPromptBuilder {
 
 	public String buildInitialGreetingInstructions(VoiceContext context) {
 
-		int numeroTicket = context.getNumeroTicketAperti();
+	    int numeroTicket = context.getNumeroTicketAperti();
 
-		if (numeroTicket == 1) {
-			return """
-					Inizia la telefonata.
+	    String salutoVip = "";
 
-					Saluta il condomino chiamandolo per nome.
-					Presentati come Lucrezia, assistente vocale del condominio.
-					Digli che hai visto che ha una segnalazione ancora aperta.
-					Se conosci la categoria della segnalazione, puoi citarla in modo naturale.
-					Chiedigli se vuole conoscere lo stato della segnalazione oppure aprirne una nuova.
+	    if (context.isSalutoVip()) {
+	        salutoVip = """
+	                Prima del resto, fai questo saluto speciale:
+	                "Ciao %s, finalmente ho il piacere di parlare con lei. Mi hanno parlato tantissimo di lei: pare sia un vero guru del mondo condominiale."
 
-					Usa una sola frase breve, naturale e professionale.
-					Parla come una receptionist umana.
-					Non essere robotica.
-					Non ripetere il nome più di una volta.
-					Non inventare dettagli sulla segnalazione.
-					""";
-		}
+	                Dopo il saluto speciale continua normalmente con il contesto della chiamata.
+	                """
+	                .formatted(context.getNome());
+	    }
 
-		if (numeroTicket > 1) {
-			return """
-					Inizia la telefonata.
+	    if (numeroTicket == 1) {
+	        return """
+	                Inizia la telefonata.
 
-					Saluta il condomino chiamandolo per nome.
-					Presentati come Lucrezia, assistente vocale del condominio.
-					Digli che hai visto che ha più segnalazioni ancora aperte.
-					Chiedigli se vuole conoscere lo stato delle segnalazioni oppure aprirne una nuova.
+	                %s
 
-					Usa una sola frase breve, naturale e professionale.
-					Parla come una receptionist umana.
-					Non essere robotica.
-					Non ripetere il nome più di una volta.
-					Non inventare dettagli sulle segnalazioni.
-					""";
-		}
+	                Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
+	                Presentati come Lucrezia, assistente vocale del condominio.
+	                Digli che hai visto che ha una segnalazione ancora aperta.
+	                Se conosci la categoria della segnalazione, puoi citarla in modo naturale.
+	                Chiedigli se vuole conoscere lo stato della segnalazione oppure aprirne una nuova.
 
-		return """
-				Inizia la telefonata.
+	                Usa una frase breve, naturale e professionale.
+	                Parla come una receptionist umana.
+	                Non essere robotica.
+	                Non ripetere il nome più di una volta.
+	                Non inventare dettagli sulla segnalazione.
+	                """
+	                .formatted(salutoVip);
+	    }
 
-				Saluta il condomino chiamandolo per nome.
-				Presentati come Lucrezia.
-				Di' che sei l'assistente vocale del condominio %s.
-				Chiedi come puoi aiutarlo oggi.
+	    if (numeroTicket > 1) {
+	        return """
+	                Inizia la telefonata.
 
-				Usa una sola frase breve, naturale e professionale.
-				Parla come una receptionist umana.
-				Non essere robotica.
-				Non ripetere il nome più di una volta.
-				""".formatted(context.getCondominio());
+	                %s
+
+	                Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
+	                Presentati come Lucrezia, assistente vocale del condominio.
+	                Digli che hai visto che ha più segnalazioni ancora aperte.
+	                Chiedigli se vuole conoscere lo stato delle segnalazioni oppure aprirne una nuova.
+
+	                Usa una frase breve, naturale e professionale.
+	                Parla come una receptionist umana.
+	                Non essere robotica.
+	                Non ripetere il nome più di una volta.
+	                Non inventare dettagli sulle segnalazioni.
+	                """
+	                .formatted(salutoVip);
+	    }
+
+	    return """
+	            Inizia la telefonata.
+
+	            %s
+
+	            Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
+	            Presentati come Lucrezia.
+	            Di' che sei l'assistente vocale del condominio %s.
+	            Chiedi come puoi aiutarlo oggi.
+
+	            Usa una frase breve, naturale e professionale.
+	            Parla come una receptionist umana.
+	            Non essere robotica.
+	            Non ripetere il nome più di una volta.
+	            """
+	            .formatted(salutoVip, context.getCondominio());
 	}
 }
