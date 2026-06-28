@@ -43,6 +43,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private final Map<String, String> sessionToStreamSid = new ConcurrentHashMap<>();
     private final Map<String, Boolean> assistantSpeaking = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    private final Map<String, java.util.concurrent.ScheduledFuture<?>> silenceTasks = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -171,6 +172,11 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                             if (outputJson == null) {
                                 System.out.println("TOOL " + name + " eseguito senza output verso OpenAI");
+
+                                if ("endCall".equals(name)) {
+                                    closeTwilioCall(streamSid);
+                                }
+
                                 return;
                             }
 
@@ -201,12 +207,17 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        scheduleSilenceCheck(streamSid, context, 8000);
+                        scheduleSilenceCheck(streamSid, context, 15000);
                     }
 
                     @Override
                     public void onUserSpeechStarted() {
                     	context.setLastUserSpeechTime(System.currentTimeMillis());
+
+                    	java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
+                    	if (task != null) {
+                    	    task.cancel(false);
+                    	}
                     	
                         if (!Boolean.TRUE.equals(assistantSpeaking.get(streamSid))) {
                             return;
@@ -272,6 +283,10 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
                 assistantSpeaking.remove(streamSid);
+                java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
+                if (task != null) {
+                    task.cancel(false);
+                }
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: stop");
@@ -334,6 +349,10 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
+            if (task != null) {
+                task.cancel(false);
+            }
         }
 
         System.out.println("############################");
@@ -353,6 +372,10 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
+            if (task != null) {
+                task.cancel(false);
+            }
         }
 
         System.out.println("############################");
@@ -428,23 +451,22 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     		VoiceContext context,
     		long delayMs) {
 
+    	java.util.concurrent.ScheduledFuture<?> oldTask = silenceTasks.remove(streamSid);
+    	if (oldTask != null) {
+    		oldTask.cancel(false);
+    	}
+
     	long scheduledAt = System.currentTimeMillis();
 
-    	scheduler.schedule(() -> {
+    	java.util.concurrent.ScheduledFuture<?> task = scheduler.schedule(() -> {
+
+    		silenceTasks.remove(streamSid);
 
     		long lastSpeech = context.getLastUserSpeechTime();
 
-    		if (lastSpeech > scheduledAt) {
-    			return;
-    		}
-
-    		if (Boolean.TRUE.equals(assistantSpeaking.get(streamSid))) {
-    			return;
-    		}
-
-    		if (context.isEndCallRequested()) {
-    			return;
-    		}
+    		if (lastSpeech > scheduledAt) return;
+    		if (Boolean.TRUE.equals(assistantSpeaking.get(streamSid))) return;
+    		if (context.isEndCallRequested()) return;
 
     		WebSocketClient client = openAiClients.get(streamSid);
 
@@ -456,5 +478,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     		}
 
     	}, delayMs, TimeUnit.MILLISECONDS);
+
+    	silenceTasks.put(streamSid, task);
     }
 }
