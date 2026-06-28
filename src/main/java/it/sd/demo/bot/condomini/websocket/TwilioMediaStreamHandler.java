@@ -439,12 +439,20 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             return;
         }
 
-        try {
-            twilioSession.close();
-            System.out.println("CHIAMATA CHIUSA DA LUCREZIA - streamSid=" + streamSid);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        scheduler.schedule(() -> {
+
+            try {
+
+                if (twilioSession.isOpen()) {
+                    twilioSession.close();
+                    System.out.println("CHIAMATA CHIUSA DA LUCREZIA - streamSid=" + streamSid);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }, 2, TimeUnit.SECONDS);
     }
     
     private void scheduleSilenceCheck(String streamSid,
