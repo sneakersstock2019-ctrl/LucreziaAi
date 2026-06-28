@@ -4,11 +4,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TicketConversazioneDao;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -21,9 +27,11 @@ public class TwilioRecordingService {
     @Value("${twilio.auth-token}")
     private String authToken;
 
+    private final TicketConversazioneDao ticketConversazioneDao;
+    
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public void startRecording(String callSid) {
+    public String startRecording(String callSid) {
 
         try {
             String url = "https://api.twilio.com/2010-04-01/Accounts/"
@@ -46,11 +54,46 @@ public class TwilioRecordingService {
 
             restTemplate.postForEntity(url, request, String.class);
 
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(url, request, String.class);
+
+            JsonNode root = new ObjectMapper().readTree(response.getBody());
+            String recordingSid = root.path("sid").asText();
+
             System.out.println("Registrazione Twilio avviata per CallSid = " + callSid);
+            System.out.println("RecordingSid = " + recordingSid);
+
+            return recordingSid;
 
         } catch (Exception e) {
             System.out.println("Errore avvio registrazione Twilio");
             e.printStackTrace();
+            return null;
         }
+    }
+    
+    public void tryAttachRecordingToTicket(VoiceContext context) {
+
+        if (context == null ||
+            context.getIdTicketCreato() == null ||
+            context.getRecordingSid() == null) {
+            return;
+        }
+
+        String audioUrl =
+                "https://api.twilio.com/2010-04-01/Accounts/"
+                + accountSid
+                + "/Recordings/"
+                + context.getRecordingSid()
+                + ".mp3";
+
+        ticketConversazioneDao.updateAudioUrlByTicket(
+                context.getIdTicketCreato(),
+                audioUrl
+        );
+
+        System.out.println("Audio registrazione associato al ticket "
+                + context.getIdTicketCreato()
+                + " = " + audioUrl);
     }
 }

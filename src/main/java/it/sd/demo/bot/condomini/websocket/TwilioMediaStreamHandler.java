@@ -63,7 +63,8 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             case "start" -> {
                 String streamSid = root.path("start").path("streamSid").asText();
                 String callSid = root.path("start").path("callSid").asText();
-                twilioRecordingService.startRecording(callSid);
+                String recordingSid = twilioRecordingService.startRecording(callSid);
+
 
                 JsonNode params = root.path("start").path("customParameters");
 
@@ -90,6 +91,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 context.setTicketAperti(ticketAperti);
                 context.setIdCondominio(idCondominio);
                 context.setCallSid(callSid);
+                context.setRecordingSid(recordingSid);
 
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
