@@ -1,5 +1,7 @@
 package it.sd.demo.bot.condomini.prompt;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.springframework.stereotype.Component;
 
 import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
@@ -307,13 +309,40 @@ public class LucreziaPromptBuilder {
 	    String salutoVip = "";
 
 	    if (context.isSalutoVip()) {
+
+	        String[] saluti = {
+
+	                "Ciao %s, finalmente ho il piacere di parlare con lei. Mi hanno parlato tantissimo di lei: pare sia un vero guru del mondo condominiale.",
+
+	                "Buongiorno %s, finalmente ci conosciamo! Ho sentito parlare molto di lei e sono davvero felice di poterla assistere.",
+
+	                "Ciao %s, è davvero un piacere sentirla. Da tempo mi raccontano del suo lavoro nel mondo dei condomini e finalmente abbiamo occasione di parlare.",
+
+	                "Buongiorno %s. Finalmente ho il piacere di conoscerla. Ho sentito parlare molto della sua esperienza nel settore condominiale.",
+
+	                "Ciao %s! Finalmente ci sentiamo. Da quello che mi raccontano, nel mondo dei condomini il suo nome è piuttosto conosciuto!",
+
+	                "Buongiorno %s, è un vero piacere poter parlare con lei. Ho sentito parlare molto della sua professionalità e sono lieta di poterla assistere.",
+
+	                "Ciao %s. Finalmente posso darle il benvenuto personalmente. Confesso che avevo sentito parlare di lei ancora prima della sua telefonata!",
+
+	                "Buongiorno %s. Finalmente abbiamo occasione di sentirci. Mi hanno raccontato che quando si parla di amministrazione condominiale, lei è uno dei riferimenti.",
+
+	                "Ciao %s, finalmente ho il piacere di parlare con lei. Devo ammettere che ero curiosa di conoscerla dopo tutto quello che ho sentito sul suo lavoro."
+	        };
+
+	        String frase = saluti[ThreadLocalRandom.current().nextInt(saluti.length)]
+	                .formatted(context.getNome());
+
 	        salutoVip = """
 	                Prima del resto, fai questo saluto speciale:
-	                "Ciao %s, finalmente ho il piacere di parlare con lei. Mi hanno parlato tantissimo di lei: pare sia un vero guru del mondo condominiale."
 
-	                Dopo il saluto speciale continua normalmente con il contesto della chiamata.
+	                "%s"
+
+	                Poi continua normalmente con il contesto della telefonata.
+	                Non ripetere il nome del condomino subito dopo il saluto.
 	                """
-	                .formatted(context.getNome());
+	                .formatted(frase);
 	    }
 
 	    if (numeroTicket == 1) {
