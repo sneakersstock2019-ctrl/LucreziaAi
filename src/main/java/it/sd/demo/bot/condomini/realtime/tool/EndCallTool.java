@@ -18,10 +18,16 @@ public class EndCallTool implements LucreziaTool {
     public String execute(String arguments, VoiceContext context) {
         context.setEndCallRequested(true);
         
-        if(context.getMotivoChiusura().equals("IN_CORSO")) {
-        	context.setMotivoChiusura("LUCREZIA_HA_CHIUSO");
+        if (context.getMotivoChiusura() == null
+                || "IN_CORSO".equals(context.getMotivoChiusura())) {
+            context.setMotivoChiusura("LUCREZIA_HA_CHIUSO");
         }
 
+        if (context.getEsitoTelefonata() == null
+                || "IN_CORSO".equals(context.getEsitoTelefonata())) {
+            context.setEsitoTelefonata("NESSUN_TICKET");
+        }
+        
         return """
             {"esito":"OK","messaggio":"Chiamata da chiudere dopo il saluto finale."}
             """;

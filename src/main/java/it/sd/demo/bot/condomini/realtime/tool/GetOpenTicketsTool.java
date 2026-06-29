@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
 import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TelefonataDao;
 import it.sd.demo.bot.condomini.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class GetOpenTicketsTool implements LucreziaTool {
 
     private final TicketDao ticketDao;
+    private final TelefonataDao telefonataDao;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -28,7 +30,13 @@ public class GetOpenTicketsTool implements LucreziaTool {
     public String execute(String arguments, VoiceContext context) {
 
         try {
+        	context.setEsitoTelefonata("STATO_TICKET");
         	context.setMotivoChiusura("STATO_TICKET");
+        	telefonataDao.updateEsito(
+        	        context.getIdTelefonata(),
+        	        "STATO_TICKET",
+        	        "STATO_TICKET"
+        	);
         	
             List<TicketStatusInfo> tickets =
                     ticketDao.findOpenTicketsByUtente(context.getIdUtente());
@@ -42,6 +50,7 @@ public class GetOpenTicketsTool implements LucreziaTool {
                             "stato_descrizione", safe(t.getStatoDescrizione()),
                             "descrizione", safe(t.getDescrizione()),
                             "fornitore", safe(t.getNomeFornitore()),
+                            "next_action", "ASK_IF_NEEDS_MORE_HELP",
                             "data_ultimo_aggiornamento",
                             t.getDataUltimoAggiornamento() == null ? "" : t.getDataUltimoAggiornamento().toString(),
                             "data_intervento_prevista",

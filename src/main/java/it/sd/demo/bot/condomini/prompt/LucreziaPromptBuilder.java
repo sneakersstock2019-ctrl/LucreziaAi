@@ -84,6 +84,8 @@ public class LucreziaPromptBuilder {
 				- non leggere il JSON;
 				- spiega lo stato con parole naturali.
 				
+				Quando il tool getOpenTickets restituisce next_action=ASK_IF_NEEDS_MORE_HELP, dopo aver comunicato lo stato delle segnalazioni devi chiedere sempre se il condomino ha bisogno di altro.
+				
 				## Chiusura della chiamata
 				
 				Dopo aver aperto una segnalazione oppure dopo aver fornito lo stato di una o più segnalazioni aperte, chiedi sempre:

@@ -307,43 +307,12 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 Integer total = chunkCounter.remove(streamSid);
 
                 VoiceContext context = voiceContexts.remove(streamSid);
-
-                if (context != null) {
-
-                    long durataSecondi = 0;
-
-                    if (context.getStartCallMillis() > 0) {
-                        durataSecondi =
-                                (System.currentTimeMillis() - context.getStartCallMillis()) / 1000;
-                    }
-
-                    String esito = context.getEsitoTelefonata();
-
-                    if (esito == null || esito.isBlank() || "IN_CORSO".equals(esito)) {
-                        esito = context.getIdTicketCreato() != null
-                                ? "TICKET_APERTO"
-                                : "NESSUN_TICKET";
-                    }
-
-                    telefonataDao.chiudiTelefonata(
-                            context.getIdTelefonata(),
-                            esito,
-                            context.getMotivoChiusura(),
-                            context.getTrascrizioneChiamata(),
-                            durataSecondi,
-                            context.getNumeroInterruzioni(),
-                            context.getNumeroTool()
-                    );
-
-                    System.out.println("TELEFONATA CHIUSA - idTelefonata = "
-                            + context.getIdTelefonata()
-                            + " esito = " + esito
-                            + " durataSecondi = " + durataSecondi);
-                }
+                chiudiTelefonataSuDb(context);
 
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
                 assistantSpeaking.remove(streamSid);
+
                 java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
                 if (task != null) {
                     task.cancel(false);
@@ -495,7 +464,11 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     }
     
     private void closeTwilioCall(String streamSid) {
-
+    	VoiceContext context = voiceContexts.get(streamSid);
+    	if (context != null) {
+    	    chiudiTelefonataSuDb(context);
+    	}
+    	
         WebSocketSession twilioSession = twilioSessions.get(streamSid);
 
         if (twilioSession == null || !twilioSession.isOpen()) {
@@ -551,5 +524,53 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     	}, delayMs, TimeUnit.MILLISECONDS);
 
     	silenceTasks.put(streamSid, task);
+    }
+    
+    private void chiudiTelefonataSuDb(VoiceContext context) {
+
+        if (context == null) {
+            return;
+        }
+
+        if (context.getIdTelefonata() == null) {
+            return;
+        }
+
+        long durataSecondi = 0;
+
+        if (context.getStartCallMillis() > 0) {
+            durataSecondi =
+                    (System.currentTimeMillis() - context.getStartCallMillis()) / 1000;
+        }
+
+        String esito = context.getEsitoTelefonata();
+
+        if (esito == null || esito.isBlank() || "IN_CORSO".equals(esito)) {
+            esito = context.getIdTicketCreato() != null
+                    ? "TICKET_APERTO"
+                    : "NESSUN_TICKET";
+        }
+
+        String motivoChiusura = context.getMotivoChiusura();
+
+        if (motivoChiusura == null || motivoChiusura.isBlank() || "IN_CORSO".equals(motivoChiusura)) {
+            motivoChiusura = esito;
+        }
+
+        telefonataDao.chiudiTelefonata(
+                context.getIdTelefonata(),
+                esito,
+                motivoChiusura,
+                context.getTrascrizioneChiamata(),
+                durataSecondi,
+                context.getNumeroInterruzioni(),
+                context.getNumeroTool()
+        );
+
+        System.out.println("TELEFONATA CHIUSA - idTelefonata = "
+                + context.getIdTelefonata()
+                + " esito = " + esito
+                + " motivoChiusura = " + motivoChiusura
+                + " durataSecondi = " + durataSecondi);
     }
 }
