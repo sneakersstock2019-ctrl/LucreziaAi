@@ -20,6 +20,12 @@ public class VoiceContext {
     private boolean endCallRequested;
     private long lastUserSpeechTime;
     private boolean salutoVip;
+    private Long idTelefonata;
+    private long startCallMillis;
+    private String esitoTelefonata;
+    private String motivoChiusura;
+    private int numeroInterruzioni;
+    private int numeroTool;
 
     private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
     private String trascrizioneChiamata = "";
@@ -30,5 +36,13 @@ public class VoiceContext {
 
     public int getNumeroTicketAperti() {
         return ticketAperti == null ? 0 : ticketAperti.size();
+    }
+    
+    public void incrementNumeroInterruzioni() {
+        this.numeroInterruzioni++;
+    }
+
+    public void incrementNumeroTool() {
+        this.numeroTool++;
     }
 }

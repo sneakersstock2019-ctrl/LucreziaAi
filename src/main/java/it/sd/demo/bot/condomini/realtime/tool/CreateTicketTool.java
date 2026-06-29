@@ -93,6 +93,7 @@ public class CreateTicketTool implements LucreziaTool {
             );
             
             context.setIdTicketCreato(ticketId);
+            context.setMotivoChiusura("TICKET_APERTO");
             if (context.getRecordingSid() != null && !context.getRecordingSid().isBlank()) {
 
                 String audioUrl =

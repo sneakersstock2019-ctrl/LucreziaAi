@@ -28,6 +28,8 @@ public class GetOpenTicketsTool implements LucreziaTool {
     public String execute(String arguments, VoiceContext context) {
 
         try {
+        	context.setMotivoChiusura("STATO_TICKET");
+        	
             List<TicketStatusInfo> tickets =
                     ticketDao.findOpenTicketsByUtente(context.getIdUtente());
 

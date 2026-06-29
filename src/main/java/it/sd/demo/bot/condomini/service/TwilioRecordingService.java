@@ -96,4 +96,15 @@ public class TwilioRecordingService {
                 + context.getIdTicketCreato()
                 + " = " + audioUrl);
     }
+    
+    public String buildRecordingMp3Url(String recordingSid) {
+
+        if (recordingSid == null || recordingSid.isBlank()) {
+            return null;
+        }
+
+        String baseUrl = "https://api.twilio.com/2010-04-01/Accounts/%s/Recordings/%s";
+
+        return String.format(baseUrl, accountSid, recordingSid) + ".mp3";
+    }
 }

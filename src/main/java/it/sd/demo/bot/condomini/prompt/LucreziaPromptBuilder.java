@@ -314,15 +314,15 @@ public class LucreziaPromptBuilder {
 
 	                "Ciao %s, finalmente ho il piacere di parlare con lei. Mi hanno parlato tantissimo di lei: pare sia un vero guru del mondo condominiale.",
 
-	                "Buongiorno %s, finalmente ci conosciamo! Ho sentito parlare molto di lei e sono davvero felice di poterla assistere.",
+	                "Carissimo %s, finalmente ci conosciamo! Ho sentito parlare molto di lei e sono davvero felice di poterla assistere.",
 
 	                "Ciao %s, è davvero un piacere sentirla. Da tempo mi raccontano del suo lavoro nel mondo dei condomini e finalmente abbiamo occasione di parlare.",
 
-	                "Buongiorno %s. Finalmente ho il piacere di conoscerla. Ho sentito parlare molto della sua esperienza nel settore condominiale.",
+	                "Caro %s. Finalmente ho il piacere di conoscerla. Ho sentito parlare molto della sua esperienza nel settore condominiale.",
 
 	                "Ciao %s! Finalmente ci sentiamo. Da quello che mi raccontano, nel mondo dei condomini il suo nome è piuttosto conosciuto!",
 
-	                "Buongiorno %s, è un vero piacere poter parlare con lei. Ho sentito parlare molto della sua professionalità e sono lieta di poterla assistere.",
+	                "Ciao %s, è un vero piacere poter parlare con lei. Ho sentito parlare molto della sua professionalità e sono lieta di poterla assistere.",
 
 	                "Ciao %s. Finalmente posso darle il benvenuto personalmente. Confesso che avevo sentito parlare di lei ancora prima della sua telefonata!",
 

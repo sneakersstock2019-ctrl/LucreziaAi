@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.demo.bot.condomini.bean.TicketStatusInfo;
 import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TelefonataDao;
 import it.sd.demo.bot.condomini.dao.TicketDao;
 import it.sd.demo.bot.condomini.realtime.tool.LucreziaToolDispatcher;
 import it.sd.demo.bot.condomini.service.OpenAIRealtimeAudioListener;
@@ -36,6 +37,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private final LucreziaToolDispatcher toolDispatcher;
     private final TicketDao ticketDao;
     private final TwilioRecordingService twilioRecordingService;
+    private final TelefonataDao telefonataDao;
 
     private final Map<String, Integer> chunkCounter = new ConcurrentHashMap<>();
     private final Map<String, WebSocketClient> openAiClients = new ConcurrentHashMap<>();
@@ -44,6 +46,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> assistantSpeaking = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final Map<String, java.util.concurrent.ScheduledFuture<?>> silenceTasks = new ConcurrentHashMap<>();
+    private final Map<String, VoiceContext> voiceContexts = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -99,10 +102,29 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 context.setCallSid(callSid);
                 context.setRecordingSid(recordingSid);
                 context.setSalutoVip(salutoVip);
+                context.setMotivoChiusura("IN_CORSO");
+
+                Long idTelefonata = telefonataDao.insertTelefonata(
+                        callSid,
+                        phone,
+                        idUtente,
+                        idCondominio
+                );
+
+                context.setIdTelefonata(idTelefonata);
+                context.setStartCallMillis(System.currentTimeMillis());
+                context.setEsitoTelefonata("IN_CORSO");
+
+                String audioUrl = twilioRecordingService.buildRecordingMp3Url(recordingSid);
+                telefonataDao.updateAudioUrl(idTelefonata, audioUrl);
+
+                System.out.println("TELEFONATA CREATA - idTelefonata = " + idTelefonata);
+                System.out.println("TELEFONATA AUDIO URL = " + audioUrl);
 
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
                 twilioSessions.put(streamSid, session);
+                voiceContexts.put(streamSid, context);
 
                 System.out.println("############################");
                 System.out.println("MEDIA STREAM EVENT: start");
@@ -211,7 +233,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        scheduleSilenceCheck(streamSid, context, 20000);
+                        scheduleSilenceCheck(streamSid, context, 50000);
                     }
 
                     @Override
@@ -284,6 +306,41 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 Integer total = chunkCounter.remove(streamSid);
 
+                VoiceContext context = voiceContexts.remove(streamSid);
+
+                if (context != null) {
+
+                    long durataSecondi = 0;
+
+                    if (context.getStartCallMillis() > 0) {
+                        durataSecondi =
+                                (System.currentTimeMillis() - context.getStartCallMillis()) / 1000;
+                    }
+
+                    String esito = context.getEsitoTelefonata();
+
+                    if (esito == null || esito.isBlank() || "IN_CORSO".equals(esito)) {
+                        esito = context.getIdTicketCreato() != null
+                                ? "TICKET_APERTO"
+                                : "NESSUN_TICKET";
+                    }
+
+                    telefonataDao.chiudiTelefonata(
+                            context.getIdTelefonata(),
+                            esito,
+                            context.getMotivoChiusura(),
+                            context.getTrascrizioneChiamata(),
+                            durataSecondi,
+                            context.getNumeroInterruzioni(),
+                            context.getNumeroTool()
+                    );
+
+                    System.out.println("TELEFONATA CHIUSA - idTelefonata = "
+                            + context.getIdTelefonata()
+                            + " esito = " + esito
+                            + " durataSecondi = " + durataSecondi);
+                }
+
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
                 assistantSpeaking.remove(streamSid);
@@ -353,6 +410,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            voiceContexts.remove(streamSid);
             java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
             if (task != null) {
                 task.cancel(false);
@@ -376,6 +434,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            voiceContexts.remove(streamSid);
             java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
             if (task != null) {
                 task.cancel(false);
