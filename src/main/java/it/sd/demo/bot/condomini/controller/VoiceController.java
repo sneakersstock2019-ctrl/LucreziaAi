@@ -47,7 +47,7 @@ public class VoiceController {
     private final TwilioService twilioService;
     private final VoiceCallContextRegistry voiceCallContextRegistry;
     
-    private static final String VIP_1 = "3492123304";
+    private static final String VIP_1 = "3490000000";
     private static final String VIP_2 = "3382702339";
     private static final String VIP_3 = "3277525353";
 
