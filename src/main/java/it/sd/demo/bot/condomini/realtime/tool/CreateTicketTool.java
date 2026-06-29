@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.demo.bot.condomini.bean.VoiceContext;
+import it.sd.demo.bot.condomini.dao.TelefonataDao;
 import it.sd.demo.bot.condomini.dao.TicketConversazioneDao;
 import it.sd.demo.bot.condomini.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class CreateTicketTool implements LucreziaTool {
     
     private final TicketDao ticketDao;
     private final TicketConversazioneDao ticketConversazioneDao;
+    private final TelefonataDao telefonataDao;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -93,7 +95,14 @@ public class CreateTicketTool implements LucreziaTool {
             );
             
             context.setIdTicketCreato(ticketId);
+            context.setEsitoTelefonata("TICKET_APERTO");
             context.setMotivoChiusura("TICKET_APERTO");
+
+            telefonataDao.updateTicket(
+                    context.getIdTelefonata(),
+                    ticketId
+            );
+            
             if (context.getRecordingSid() != null && !context.getRecordingSid().isBlank()) {
 
                 String audioUrl =
