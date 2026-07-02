@@ -52,6 +52,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private final Map<String, java.util.concurrent.ScheduledFuture<?>> silenceTasks = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> bargeInTasks = new ConcurrentHashMap<>();
     private final Map<String, VoiceContext> voiceContexts = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> twilioAudioPlaying = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -129,6 +130,8 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 sessionToStreamSid.put(session.getId(), streamSid);
                 twilioSessions.put(streamSid, session);
                 voiceContexts.put(streamSid, voiceContext);
+                assistantSpeaking.put(streamSid, false);
+                twilioAudioPlaying.put(streamSid, false);
 
                 CallLogger.info(callSid, "############################");
                 CallLogger.info(callSid, "MEDIA STREAM EVENT: start");
@@ -236,17 +239,14 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                         assistantSpeaking.put(streamSid, false);
 
-                        if (!voiceContext.isInitialGreetingCompleted()) {
-                            voiceContext.setInitialGreetingCompleted(true);
-                            CallLogger.info(voiceContext, "SALUTO INIZIALE COMPLETATO - barge-in abilitato");
-                        }
+                        sendMarkToTwilio(streamSid);
 
                         if (voiceContext.isEndCallRequested()) {
                             closeTwilioCall(streamSid);
                             return;
                         }
 
-                        scheduleSilenceCheck(streamSid, voiceContext, 50000);
+                        scheduleSilenceCheck(streamSid, voiceContext, 60000);
                     }
 
                     @Override
@@ -264,7 +264,10 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        if (!Boolean.TRUE.equals(assistantSpeaking.get(streamSid))) {
+                        boolean openAiSpeaking = Boolean.TRUE.equals(assistantSpeaking.get(streamSid));
+                        boolean twilioPlaying = Boolean.TRUE.equals(twilioAudioPlaying.get(streamSid));
+
+                        if (!openAiSpeaking && !twilioPlaying) {
                             return;
                         }
 
@@ -275,9 +278,12 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                         ScheduledFuture<?> bargeTask = scheduler.schedule(() -> {
 
-                            if (!Boolean.TRUE.equals(assistantSpeaking.get(streamSid))) {
-                                return;
-                            }
+                        	boolean openAiSpeakingNow = Boolean.TRUE.equals(assistantSpeaking.get(streamSid));
+                        	boolean twilioPlayingNow = Boolean.TRUE.equals(twilioAudioPlaying.get(streamSid));
+
+                        	if (!openAiSpeakingNow && !twilioPlayingNow) {
+                        	    return;
+                        	}
 
                             CallLogger.info(voiceContext, "BARGE-IN confermato dopo debounce");
 
@@ -289,6 +295,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             }
 
                             assistantSpeaking.put(streamSid, false);
+                            twilioAudioPlaying.put(streamSid, false);
                             voiceContext.incrementNumeroInterruzioni();
 
                         }, BARGE_IN_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
@@ -345,6 +352,20 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     CallLogger.info(voiceContexts.get(streamSid), "MEDIA CHUNK inviati a OpenAI per stream " + streamSid + ": " + count);
                 }
             }
+            
+            case "mark" -> {
+                String streamSid = root.path("streamSid").asText();
+                VoiceContext context = voiceContexts.get(streamSid);
+
+                twilioAudioPlaying.put(streamSid, false);
+
+                CallLogger.info(context, "TWILIO MARK ricevuto - audio riprodotto completamente");
+
+                if (context != null && !context.isInitialGreetingCompleted()) {
+                    context.setInitialGreetingCompleted(true);
+                    CallLogger.info(context, "SALUTO INIZIALE COMPLETATO - barge-in abilitato");
+                }
+            }
 
             case "stop" -> {
                 String streamSid = root.path("streamSid").asText();
@@ -357,6 +378,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 closeOpenAiClient(streamSid);
                 twilioSessions.remove(streamSid);
                 assistantSpeaking.remove(streamSid);
+                twilioAudioPlaying.remove(streamSid);
 
                 java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
                 if (task != null) {
@@ -443,6 +465,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            twilioAudioPlaying.remove(streamSid);
             voiceContexts.remove(streamSid);
 
             java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
@@ -486,6 +509,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
+            twilioAudioPlaying.remove(streamSid);
             voiceContexts.remove(streamSid);
             
             java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
@@ -657,5 +681,38 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 + " esito = " + esito
                 + " motivoChiusura = " + motivoChiusura
                 + " durataSecondi = " + durataSecondi);
+    }
+    
+    private void sendMarkToTwilio(String streamSid) {
+
+        WebSocketSession twilioSession = twilioSessions.get(streamSid);
+        VoiceContext context = voiceContexts.get(streamSid);
+
+        if (twilioSession == null || !twilioSession.isOpen()) {
+            return;
+        }
+
+        try {
+            twilioAudioPlaying.put(streamSid, true);
+
+            Map<String, Object> event = Map.of(
+                    "event", "mark",
+                    "streamSid", streamSid,
+                    "mark", Map.of(
+                            "name", "lucrezia-audio"
+                    )
+            );
+
+            synchronized (twilioSession) {
+                twilioSession.sendMessage(
+                        new TextMessage(objectMapper.writeValueAsString(event))
+                );
+            }
+
+            CallLogger.info(context, "TWILIO MARK inviato - attendo fine riproduzione audio");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
