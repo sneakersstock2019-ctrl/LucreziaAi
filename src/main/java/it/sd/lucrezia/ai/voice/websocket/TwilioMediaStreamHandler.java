@@ -172,11 +172,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                     @Override
                     public void onAssistantTranscriptDone(String transcript) {
-                        System.out.println();
-                        CallLogger.info(callSid, "############################");
-                        CallLogger.info(callSid, "LUCREZIA REALTIME:");
-                        System.out.println(transcript);
-                        CallLogger.info(callSid, "############################");
+                        CallLogger.info(callSid, "LUCREZIA HA DETTO:" + transcript);
                         voiceContext.setTrascrizioneChiamata(
                                 voiceContext.getTrascrizioneChiamata()
                                         + "\nLucrezia: " + transcript + "\n"
@@ -185,14 +181,22 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     
                     @Override
                     public void onUserTranscriptDone(String transcript) {
-
+                    	CallLogger.info(callSid, "UTENTE HA DETTO:" + transcript);
+                    	
                         if (SpeechFilter.isNoiseOrFiller(transcript)) {
                             CallLogger.info(callSid, "INPUT UTENTE ignorato come rumore/filler: " + transcript);
                             return;
                         }
 
-                        voiceContext.setTrascrizioneChiamata(voiceContext.getTrascrizioneChiamata() + "\nCondomino: " + transcript + "\n"
+                        voiceContext.setTrascrizioneChiamata(
+                                voiceContext.getTrascrizioneChiamata()
+                                        + "\nCondomino: " + transcript + "\n"
                         );
+
+                        WebSocketClient client = openAiClients.get(streamSid);
+                        if (client != null && client.isOpen()) {
+                            openAIRealtimeClient.createResponse(client);
+                        }
                     }
 
                     @Override

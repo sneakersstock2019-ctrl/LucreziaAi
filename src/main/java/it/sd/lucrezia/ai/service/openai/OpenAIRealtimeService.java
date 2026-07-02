@@ -297,7 +297,8 @@ public class OpenAIRealtimeService {
                         		                "type", "server_vad",
                         		                "threshold", 0.5,
                         		                "prefix_padding_ms", 300,
-                        		                "silence_duration_ms", 500
+                        		                "silence_duration_ms", 500,
+                        		                "create_response", false
                         		        )
                         		),
                                 "output", Map.of(
@@ -422,6 +423,24 @@ public class OpenAIRealtimeService {
 
             client.send(objectMapper.writeValueAsString(userMessage));
 
+            Map<String, Object> responseCreate = Map.of(
+                    "type", "response.create"
+            );
+
+            client.send(objectMapper.writeValueAsString(responseCreate));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void createResponse(WebSocketClient client) {
+
+        if (client == null || !client.isOpen()) {
+            return;
+        }
+
+        try {
             Map<String, Object> responseCreate = Map.of(
                     "type", "response.create"
             );
