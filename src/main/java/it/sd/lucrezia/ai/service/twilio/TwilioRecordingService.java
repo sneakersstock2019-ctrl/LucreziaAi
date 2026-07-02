@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.dao.TicketConversazioneDao;
+import it.sd.lucrezia.ai.util.CallLogger;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -60,8 +61,8 @@ public class TwilioRecordingService {
             JsonNode root = new ObjectMapper().readTree(response.getBody());
             String recordingSid = root.path("sid").asText();
 
-            System.out.println("Registrazione Twilio avviata per CallSid = " + callSid);
-            System.out.println("RecordingSid = " + recordingSid);
+            CallLogger.info(callSid, "Registrazione Twilio avviata");
+            CallLogger.info(callSid, "RecordingSid=" + recordingSid);
 
             return recordingSid;
 

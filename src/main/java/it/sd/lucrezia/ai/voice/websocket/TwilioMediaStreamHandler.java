@@ -24,6 +24,7 @@ import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.service.openai.OpenAIRealtimeService;
 import it.sd.lucrezia.ai.service.twilio.TwilioRecordingService;
 import it.sd.lucrezia.ai.tool.LucreziaToolDispatcher;
+import it.sd.lucrezia.ai.util.CallLogger;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -64,7 +65,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
         switch (event) {
 
             case "connected" -> {
-                System.out.println("MEDIA STREAM EVENT: connected");
+            	System.out.println("MEDIA STREAM EVENT: connected");
             }
 
             case "start" -> {
@@ -86,21 +87,21 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 try {
                     ticketAperti = ticketDao.findOpenTicketsByUtente(idUtente);
                 } catch (Exception e) {
-                    System.out.println("Errore recupero ticket aperti realtime:");
+                    CallLogger.info(callSid, "Errore recupero ticket aperti realtime:");
                     e.printStackTrace();
                 }
 
-                VoiceContext context = new VoiceContext();
-                context.setPhone(phone);
-                context.setNome(nome);
-                context.setCondominio(condominio);
-                context.setIdUtente(idUtente);
-                context.setTicketAperti(ticketAperti);
-                context.setIdCondominio(idCondominio);
-                context.setCallSid(callSid);
-                context.setRecordingSid(recordingSid);
-                context.setSalutoVip(salutoVip);
-                context.setMotivoChiusura("IN_CORSO");
+                VoiceContext voiceContext = new VoiceContext();
+                voiceContext.setPhone(phone);
+                voiceContext.setNome(nome);
+                voiceContext.setCondominio(condominio);
+                voiceContext.setIdUtente(idUtente);
+                voiceContext.setTicketAperti(ticketAperti);
+                voiceContext.setIdCondominio(idCondominio);
+                voiceContext.setCallSid(callSid);
+                voiceContext.setRecordingSid(recordingSid);
+                voiceContext.setSalutoVip(salutoVip);
+                voiceContext.setMotivoChiusura("IN_CORSO");
 
                 Long idTelefonata = telefonataDao.insertTelefonata(
                         callSid,
@@ -109,35 +110,35 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                         idCondominio
                 );
 
-                context.setIdTelefonata(idTelefonata);
-                context.setStartCallMillis(System.currentTimeMillis());
-                context.setEsitoTelefonata("IN_CORSO");
+                voiceContext.setIdTelefonata(idTelefonata);
+                voiceContext.setStartCallMillis(System.currentTimeMillis());
+                voiceContext.setEsitoTelefonata("IN_CORSO");
 
                 String audioUrl = twilioRecordingService.buildRecordingMp3Url(recordingSid);
-                telefonataDao.updateAudioUrl(idTelefonata, audioUrl);
+                telefonataDao.updateAudioUrl(idTelefonata, audioUrl, voiceContext.getCallSid());
 
-                System.out.println("TELEFONATA CREATA - idTelefonata = " + idTelefonata);
-                System.out.println("TELEFONATA AUDIO URL = " + audioUrl);
+                CallLogger.info(callSid, "TELEFONATA CREATA - idTelefonata = " + idTelefonata);
+                CallLogger.info(callSid, "TELEFONATA AUDIO URL = " + audioUrl);
 
                 chunkCounter.put(streamSid, 0);
                 sessionToStreamSid.put(session.getId(), streamSid);
                 twilioSessions.put(streamSid, session);
-                voiceContexts.put(streamSid, context);
+                voiceContexts.put(streamSid, voiceContext);
 
-                System.out.println("############################");
-                System.out.println("MEDIA STREAM EVENT: start");
-                System.out.println("STREAM SID = " + streamSid);
-                System.out.println("CALL SID = " + callSid);
-                System.out.println("RECORDING_SID = " + recordingSid);
-                System.out.println("PARAM PHONE = " + phone);
-                System.out.println("PARAM NOME = " + nome);
-                System.out.println("PARAM CONDOMINIO = " + condominio);
-                System.out.println("PARAM ID_UTENTE = " + idUtente);
-                System.out.println("PARAM ID_CONDOMINIO = " + idCondominio);
-                System.out.println("PARAM SALUTO_VIP = " + salutoVip);
-                System.out.println("TICKET APERTI = " + ticketAperti.size());
-                System.out.println("Apro connessione OpenAI Realtime Voice...");
-                System.out.println("############################");
+                CallLogger.info(callSid, "############################");
+                CallLogger.info(callSid, "MEDIA STREAM EVENT: start");
+                CallLogger.info(callSid, "STREAM SID = " + streamSid);
+                CallLogger.info(callSid, "CALL SID = " + callSid);
+                CallLogger.info(callSid, "RECORDING_SID = " + recordingSid);
+                CallLogger.info(callSid, "PARAM PHONE = " + phone);
+                CallLogger.info(callSid, "PARAM NOME = " + nome);
+                CallLogger.info(callSid, "PARAM CONDOMINIO = " + condominio);
+                CallLogger.info(callSid, "PARAM ID_UTENTE = " + idUtente);
+                CallLogger.info(callSid, "PARAM ID_CONDOMINIO = " + idCondominio);
+                CallLogger.info(callSid, "PARAM SALUTO_VIP = " + salutoVip);
+                CallLogger.info(callSid, "TICKET APERTI = " + ticketAperti.size());
+                CallLogger.info(callSid, "Apro connessione OpenAI Realtime Voice...");
+                CallLogger.info(callSid, "############################");
 
                 IOpenAIRealtimeAudioListener listener = new IOpenAIRealtimeAudioListener() {
 
@@ -147,8 +148,8 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             WebSocketClient client = openAiClients.get(streamSid);
 
                             if (client != null && client.isOpen()) {
-                                openAIRealtimeClient.sendInitialGreeting(client, context);
-                                System.out.println("SALUTO INIZIALE INVIATO DOPO SESSION READY");
+                                openAIRealtimeClient.sendInitialGreeting(client, voiceContext);
+                                CallLogger.info(callSid, "SALUTO INIZIALE INVIATO DOPO SESSION READY");
                             }
 
                         } catch (Exception e) {
@@ -164,27 +165,27 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     @Override
                     public void onAssistantTranscriptDone(String transcript) {
                         System.out.println();
-                        System.out.println("############################");
-                        System.out.println("LUCREZIA REALTIME:");
+                        CallLogger.info(callSid, "############################");
+                        CallLogger.info(callSid, "LUCREZIA REALTIME:");
                         System.out.println(transcript);
-                        System.out.println("############################");
-                        context.setTrascrizioneChiamata(
-                                context.getTrascrizioneChiamata()
+                        CallLogger.info(callSid, "############################");
+                        voiceContext.setTrascrizioneChiamata(
+                                voiceContext.getTrascrizioneChiamata()
                                         + "\nLucrezia: " + transcript + "\n"
                         );
                     }
                     
                     @Override
                     public void onUserTranscriptDone(String transcript) {
-                        context.setTrascrizioneChiamata(
-                                context.getTrascrizioneChiamata()
+                        voiceContext.setTrascrizioneChiamata(
+                                voiceContext.getTrascrizioneChiamata()
                                         + "\nCondomino: " + transcript + "\n"
                         );
                     }
 
                     @Override
                     public void onError(String rawMessage) {
-                        System.out.println("OPENAI REALTIME LISTENER ERROR:");
+                        CallLogger.info(callSid, "OPENAI REALTIME LISTENER ERROR:");
                         System.out.println(rawMessage);
                     }
 
@@ -192,10 +193,10 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     public void onFunctionCall(String callId, String name, String arguments) {
 
                         try {
-                            String outputJson = toolDispatcher.execute(name, arguments, context);
+                            String outputJson = toolDispatcher.execute(name, arguments, voiceContext);
 
                             if (outputJson == null) {
-                                System.out.println("TOOL " + name + " eseguito senza output verso OpenAI");
+                                CallLogger.info(callSid, "TOOL " + name + " eseguito senza output verso OpenAI");
 
                                 if ("endCall".equals(name)) {
                                     closeTwilioCall(streamSid);
@@ -226,17 +227,17 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                         assistantSpeaking.put(streamSid, false);
 
-                        if (context.isEndCallRequested()) {
+                        if (voiceContext.isEndCallRequested()) {
                             closeTwilioCall(streamSid);
                             return;
                         }
 
-                        scheduleSilenceCheck(streamSid, context, 50000);
+                        scheduleSilenceCheck(streamSid, voiceContext, 50000);
                     }
 
                     @Override
                     public void onUserSpeechStarted() {
-                    	context.setLastUserSpeechTime(System.currentTimeMillis());
+                    	voiceContext.setLastUserSpeechTime(System.currentTimeMillis());
 
                     	java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
                     	if (task != null) {
@@ -247,14 +248,14 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        System.out.println("BARGE-IN: utente ha interrotto Lucrezia");
+                        CallLogger.info(callSid, "BARGE-IN: utente ha interrotto Lucrezia");
 
                         sendClearToTwilio(streamSid);
 
                         WebSocketClient client = openAiClients.get(streamSid);
 
                         if (client != null && client.isOpen()) {
-                            openAIRealtimeClient.cancelResponse(client);
+                            openAIRealtimeClient.cancelResponse(client, callSid);
                         }
 
                         assistantSpeaking.put(streamSid, false);
@@ -291,11 +292,11 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 WebSocketClient openAiClient = openAiClients.get(streamSid);
 
                 if (openAiClient != null && openAiClient.isOpen()) {
-                    openAIRealtimeClient.sendAudio(openAiClient, payload);
+                    openAIRealtimeClient.sendAudio(openAiClient, payload, voiceContexts.get(streamSid).getCallSid());
                 }
 
                 if (count % 100 == 0) {
-                    System.out.println("MEDIA CHUNK inviati a OpenAI per stream " + streamSid + ": " + count);
+                    CallLogger.info(voiceContexts.get(streamSid), "MEDIA CHUNK inviati a OpenAI per stream " + streamSid + ": " + count);
                 }
             }
 
@@ -316,15 +317,16 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     task.cancel(false);
                 }
 
-                System.out.println("############################");
-                System.out.println("MEDIA STREAM EVENT: stop");
-                System.out.println("STREAM SID = " + streamSid);
-                System.out.println("MEDIA CHUNK TOTALI = " + total);
-                System.out.println("############################");
+                CallLogger.info(voiceContexts.get(streamSid), "############################");
+                CallLogger.info(voiceContexts.get(streamSid), "MEDIA STREAM EVENT: stop");
+                CallLogger.info(voiceContexts.get(streamSid), "STREAM SID = " + streamSid);
+                CallLogger.info(voiceContexts.get(streamSid), "MEDIA CHUNK TOTALI = " + total);
+                CallLogger.info(voiceContexts.get(streamSid), "############################");
             }
 
             default -> {
-                System.out.println("MEDIA STREAM EVENT non gestito: " + event);
+            	String streamSid = root.path("streamSid").asText();
+                CallLogger.info(voiceContexts.get(streamSid), "MEDIA STREAM EVENT non gestito: " + event);
             }
         }
     }
@@ -361,7 +363,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
             }
 
         } catch (Exception e) {
-            System.out.println("ERRORE INVIO AUDIO A TWILIO:");
+            CallLogger.info(voiceContexts.get(streamSid), "ERRORE INVIO AUDIO A TWILIO:");
             e.printStackTrace();
         }
     }
@@ -373,22 +375,36 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
         String streamSid = sessionToStreamSid.remove(session.getId());
 
         if (streamSid != null) {
+            String callSid = "UNKNOWN";
+
+            VoiceContext context = voiceContexts.get(streamSid);
+            if (context != null && context.getCallSid() != null) {
+                callSid = context.getCallSid();
+            }
+
+            CallLogger.info(callSid, "############################");
+            CallLogger.info(callSid, "TWILIO MEDIA STREAM CLOSED");
+            CallLogger.info(callSid, "SESSION ID = " + session.getId());
+            CallLogger.info(callSid, "STATUS = " + status);
+            CallLogger.info(callSid, "############################");
+
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
             assistantSpeaking.remove(streamSid);
             voiceContexts.remove(streamSid);
+
             java.util.concurrent.ScheduledFuture<?> task = silenceTasks.remove(streamSid);
             if (task != null) {
                 task.cancel(false);
             }
+
+            return;
         }
 
-        System.out.println("############################");
-        System.out.println("TWILIO MEDIA STREAM CLOSED");
-        System.out.println("SESSION ID = " + session.getId());
-        System.out.println("STATUS = " + status);
-        System.out.println("############################");
+        CallLogger.info("UNKNOWN", "TWILIO MEDIA STREAM CLOSED");
+        CallLogger.info("UNKNOWN", "SESSION ID = " + session.getId());
+        CallLogger.info("UNKNOWN", "STATUS = " + status);
     }
 
     @Override
@@ -397,6 +413,19 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
         String streamSid = sessionToStreamSid.remove(session.getId());
 
         if (streamSid != null) {
+            String callSid = "UNKNOWN";
+
+            VoiceContext context = voiceContexts.get(streamSid);
+            if (context != null && context.getCallSid() != null) {
+                callSid = context.getCallSid();
+            }
+            
+            CallLogger.info(callSid, "############################");
+            CallLogger.info(callSid, "TWILIO MEDIA STREAM ERROR");
+            CallLogger.info(callSid, "SESSION ID = " + session.getId());
+            CallLogger.info(callSid, "ERROR = " + exception.getMessage());
+            CallLogger.info(callSid, "############################");
+            
             closeOpenAiClient(streamSid);
             chunkCounter.remove(streamSid);
             twilioSessions.remove(streamSid);
@@ -407,12 +436,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 task.cancel(false);
             }
         }
-
-        System.out.println("############################");
-        System.out.println("TWILIO MEDIA STREAM ERROR");
-        System.out.println("SESSION ID = " + session.getId());
-        System.out.println("ERROR = " + exception.getMessage());
-        System.out.println("############################");
 
         exception.printStackTrace();
     }
@@ -437,6 +460,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     private void sendClearToTwilio(String streamSid) {
 
         WebSocketSession twilioSession = twilioSessions.get(streamSid);
+        VoiceContext voiceContext = voiceContexts.get(streamSid);
 
         if (twilioSession == null || !twilioSession.isOpen()) {
             return;
@@ -454,7 +478,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 );
             }
 
-            System.out.println("CLEAR inviato a Twilio per stream " + streamSid);
+            CallLogger.info(voiceContext, "CLEAR inviato a Twilio per stream " + streamSid);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -462,9 +486,9 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     }
     
     private void closeTwilioCall(String streamSid) {
-    	VoiceContext context = voiceContexts.get(streamSid);
-    	if (context != null) {
-    	    chiudiTelefonataSuDb(context);
+    	VoiceContext voiceContext = voiceContexts.get(streamSid);
+    	if (voiceContext != null) {
+    	    chiudiTelefonataSuDb(voiceContext);
     	}
     	
         WebSocketSession twilioSession = twilioSessions.get(streamSid);
@@ -479,7 +503,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                 if (twilioSession.isOpen()) {
                     twilioSession.close();
-                    System.out.println("CHIAMATA CHIUSA DA LUCREZIA - streamSid=" + streamSid);
+                    CallLogger.info(voiceContext, "CHIAMATA CHIUSA DA LUCREZIA - streamSid=" + streamSid);
                 }
 
             } catch (Exception e) {
@@ -524,49 +548,50 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
     	silenceTasks.put(streamSid, task);
     }
     
-    private void chiudiTelefonataSuDb(VoiceContext context) {
+    private void chiudiTelefonataSuDb(VoiceContext voiceContext) {
 
-        if (context == null) {
+        if (voiceContext == null) {
             return;
         }
 
-        if (context.getIdTelefonata() == null) {
+        if (voiceContext.getIdTelefonata() == null) {
             return;
         }
 
         long durataSecondi = 0;
 
-        if (context.getStartCallMillis() > 0) {
+        if (voiceContext.getStartCallMillis() > 0) {
             durataSecondi =
-                    (System.currentTimeMillis() - context.getStartCallMillis()) / 1000;
+                    (System.currentTimeMillis() - voiceContext.getStartCallMillis()) / 1000;
         }
 
-        String esito = context.getEsitoTelefonata();
+        String esito = voiceContext.getEsitoTelefonata();
 
         if (esito == null || esito.isBlank() || "IN_CORSO".equals(esito)) {
-            esito = context.getIdTicketCreato() != null
+            esito = voiceContext.getIdTicketCreato() != null
                     ? "TICKET_APERTO"
                     : "NESSUN_TICKET";
         }
 
-        String motivoChiusura = context.getMotivoChiusura();
+        String motivoChiusura = voiceContext.getMotivoChiusura();
 
         if (motivoChiusura == null || motivoChiusura.isBlank() || "IN_CORSO".equals(motivoChiusura)) {
             motivoChiusura = esito;
         }
 
         telefonataDao.chiudiTelefonata(
-                context.getIdTelefonata(),
+                voiceContext.getIdTelefonata(),
                 esito,
                 motivoChiusura,
-                context.getTrascrizioneChiamata(),
+                voiceContext.getTrascrizioneChiamata(),
                 durataSecondi,
-                context.getNumeroInterruzioni(),
-                context.getNumeroTool()
+                voiceContext.getNumeroInterruzioni(),
+                voiceContext.getNumeroTool(),
+                voiceContext.getCallSid()
         );
 
-        System.out.println("TELEFONATA CHIUSA - idTelefonata = "
-                + context.getIdTelefonata()
+        CallLogger.info(voiceContext, "TELEFONATA CHIUSA - idTelefonata = "
+                + voiceContext.getIdTelefonata()
                 + " esito = " + esito
                 + " motivoChiusura = " + motivoChiusura
                 + " durataSecondi = " + durataSecondi);

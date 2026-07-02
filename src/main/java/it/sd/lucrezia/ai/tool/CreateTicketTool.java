@@ -12,6 +12,7 @@ import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketConversazioneDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
+import it.sd.lucrezia.ai.util.CallLogger;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -33,7 +34,8 @@ public class CreateTicketTool implements LucreziaTool {
     }
 
     @Override
-    public String execute(String arguments, VoiceContext context) {
+    public String execute(String arguments, VoiceContext voiceContext) {
+    	CallLogger.info(voiceContext, "TOOL createTicket - arguments=" + arguments);
 
         try {
             JsonNode root = objectMapper.readTree(arguments);
@@ -78,48 +80,47 @@ public class CreateTicketTool implements LucreziaTool {
             String descrizioneCompleta = descrizione + " Area: " + area + ".";
 
             Long ticketId = ticketDao.insertTicket(
-                    context.getIdCondominio(),
-                    context.getIdUtente(),
+                    voiceContext.getIdCondominio(),
+                    voiceContext.getIdUtente(),
                     categoria,
                     priorita,
                     "TELEFONO",
                     descrizioneCompleta
             );
+            CallLogger.info(voiceContext, "Ticket creato - idTicket=" + ticketId);
             
             ticketConversazioneDao.insertConversazione(
                     ticketId,
                     "TELEFONO",
                     "AUDIO",
-                    context.getTrascrizioneChiamata(),
+                    voiceContext.getTrascrizioneChiamata(),
                     null
             );
             
-            context.setIdTicketCreato(ticketId);
-            context.setEsitoTelefonata("TICKET_APERTO");
-            context.setMotivoChiusura("TICKET_APERTO");
+            voiceContext.setIdTicketCreato(ticketId);
+            voiceContext.setEsitoTelefonata("TICKET_APERTO");
+            voiceContext.setMotivoChiusura("TICKET_APERTO");
 
-            telefonataDao.updateTicket(
-                    context.getIdTelefonata(),
-                    ticketId
-            );
+            telefonataDao.updateTicket(voiceContext.getIdTelefonata(), ticketId, voiceContext.getCallSid());
             
-            if (context.getRecordingSid() != null && !context.getRecordingSid().isBlank()) {
+            if (voiceContext.getRecordingSid() != null && !voiceContext.getRecordingSid().isBlank()) {
 
                 String audioUrl =
                         "https://api.twilio.com/2010-04-01/Accounts/"
                         + accountSid
                         + "/Recordings/"
-                        + context.getRecordingSid()
+                        + voiceContext.getRecordingSid()
                         + ".mp3";
 
                 ticketConversazioneDao.updateAudioUrlByTicket(ticketId, audioUrl);
 
-                System.out.println("Audio registrazione associato al ticket "
+                CallLogger.info(voiceContext, "contextAudio registrazione associato al ticket "
                         + ticketId
                         + " = " + audioUrl);
             }
             
             boolean richiediFoto = shouldRequestPhoto(categoria, descrizioneCompleta);
+            CallLogger.info(voiceContext, "Ticket creato - richiediFoto=" + richiediFoto);
 
             if (ticketId == null) {
                 return objectMapper.writeValueAsString(Map.of(

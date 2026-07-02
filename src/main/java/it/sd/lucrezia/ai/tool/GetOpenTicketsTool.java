@@ -11,6 +11,7 @@ import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
+import it.sd.lucrezia.ai.util.CallLogger;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -27,19 +28,17 @@ public class GetOpenTicketsTool implements LucreziaTool {
     }
 
     @Override
-    public String execute(String arguments, VoiceContext context) {
+    public String execute(String arguments, VoiceContext voiceContext) {
 
         try {
-        	context.setEsitoTelefonata("STATO_TICKET");
-        	context.setMotivoChiusura("STATO_TICKET");
-        	telefonataDao.updateEsito(
-        	        context.getIdTelefonata(),
-        	        "STATO_TICKET",
-        	        "STATO_TICKET"
-        	);
+        	CallLogger.info(voiceContext, "TOOL getOpenTickets");
         	
-            List<TicketStatusInfo> tickets =
-                    ticketDao.findOpenTicketsByUtente(context.getIdUtente());
+        	voiceContext.setEsitoTelefonata("STATO_TICKET");
+        	voiceContext.setMotivoChiusura("STATO_TICKET");
+        	telefonataDao.updateEsito(voiceContext.getIdTelefonata(), "STATO_TICKET", "STATO_TICKET", voiceContext.getCallSid());
+        	
+            List<TicketStatusInfo> tickets = ticketDao.findOpenTicketsByUtente(voiceContext.getIdUtente());
+            CallLogger.info(voiceContext, "Ticket aperti recuperati=" + tickets.size());
 
             List<Map<String, Object>> ticketJson = tickets.stream()
                     .map(t -> Map.<String, Object>of(

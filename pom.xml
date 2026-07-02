@@ -8,11 +8,11 @@
 		<version>3.5.15-SNAPSHOT</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>it.sd.demo</groupId>
-	<artifactId>bot.condomini</artifactId>
+	<groupId>it.sd.lucrezia.ai</groupId>
+	<artifactId>LucreziaAi</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>LucreziaAi</name>
+	<description>Assistente AI vocale e WhatsApp per la gestione condominiale</description>
 	<url/>
 	<licenses>
 		<license/>

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.prompt.LucreziaPromptBuilder;
+import it.sd.lucrezia.ai.util.CallLogger;
 import it.sd.lucrezia.ai.voice.websocket.IOpenAIRealtimeAudioListener;
 import lombok.RequiredArgsConstructor;
 
@@ -38,7 +39,7 @@ public class OpenAIRealtimeService {
 
             @Override
             public void onOpen(ServerHandshake handshakedata) {
-                System.out.println("OPENAI REALTIME VOICE CONNECTED - CALL SID = " + callSid);
+                CallLogger.info(callSid, "OPENAI REALTIME VOICE CONNECTED - CALL SID = " + callSid);
 
                 try {
                     sendSessionUpdate(this, nome, condominio);
@@ -54,25 +55,25 @@ public class OpenAIRealtimeService {
                     String type = root.path("type").asText();
 
                     if ("error".equals(type)) {
-                        System.out.println("OPENAI REALTIME ERROR EVENT RAW = " + message);
+                        CallLogger.info(callSid, "OPENAI REALTIME ERROR EVENT RAW = " + message);
                         listener.onError(message);
                         return;
                     }
 
                     if ("session.updated".equals(type)) {
-                        System.out.println("OPENAI REALTIME VOICE SESSION UPDATED");
+                        CallLogger.info(callSid, "OPENAI REALTIME VOICE SESSION UPDATED");
                         listener.onSessionReady();
                         return;
                     }
 
                     if ("input_audio_buffer.speech_started".equals(type)) {
-                        System.out.println("UTENTE HA INIZIATO A PARLARE");
+                        CallLogger.info(callSid, "UTENTE HA INIZIATO A PARLARE");
                         listener.onUserSpeechStarted();
                         return;
                     }
 
                     if ("input_audio_buffer.speech_stopped".equals(type)) {
-                        System.out.println("UTENTE HA FINITO DI PARLARE");
+                        CallLogger.info(callSid, "UTENTE HA FINITO DI PARLARE");
                         return;
                     }
 
@@ -81,9 +82,9 @@ public class OpenAIRealtimeService {
                         String name = root.path("name").asText();
                         String arguments = root.path("arguments").asText();
 
-                        System.out.println("OPENAI FUNCTION CALL = " + name);
-                        System.out.println("CALL ID = " + callId);
-                        System.out.println("ARGUMENTS = " + arguments);
+                        CallLogger.info(callSid, "OPENAI FUNCTION CALL = " + name);
+                        CallLogger.info(callSid, "CALL ID = " + callId);
+                        CallLogger.info(callSid, "ARGUMENTS = " + arguments);
 
                         listener.onFunctionCall(callId, name, arguments);
                         return;
@@ -131,36 +132,36 @@ public class OpenAIRealtimeService {
                     
                     if ("response.output_audio.done".equals(type)) {
                         listener.onAssistantAudioDone();
-                        System.out.println("OPENAI REALTIME TYPE = " + type);
+                        CallLogger.info(callSid, "OPENAI REALTIME TYPE = " + type);
                         return;
                     }
 
                     if ("response.done".equals(type)) {
-                        System.out.println("OPENAI RESPONSE DONE");
+                        CallLogger.info(callSid, "OPENAI RESPONSE DONE");
                         return;
                     }
 
-                    System.out.println("OPENAI REALTIME TYPE = " + type);
+                    CallLogger.info(callSid, "OPENAI REALTIME TYPE = " + type);
 
                 } catch (Exception e) {
-                    System.out.println("OPENAI REALTIME RAW MESSAGE = " + message);
+                    CallLogger.info(callSid, "OPENAI REALTIME RAW MESSAGE = " + message);
                     e.printStackTrace();
                 }
             }
 
             @Override
             public void onMessage(ByteBuffer bytes) {
-                System.out.println("OPENAI REALTIME BINARY MESSAGE ricevuto");
+                CallLogger.info(callSid, "OPENAI REALTIME BINARY MESSAGE ricevuto");
             }
 
             @Override
             public void onClose(int code, String reason, boolean remote) {
-                System.out.println("OPENAI REALTIME CLOSED - code=" + code + ", reason=" + reason);
+                CallLogger.info(callSid, "OPENAI REALTIME CLOSED - code=" + code + ", reason=" + reason);
             }
 
             @Override
             public void onError(Exception ex) {
-                System.out.println("OPENAI REALTIME ERROR: " + ex.getMessage());
+                CallLogger.info(callSid, "OPENAI REALTIME ERROR: " + ex.getMessage());
                 ex.printStackTrace();
             }
         };
@@ -170,7 +171,7 @@ public class OpenAIRealtimeService {
         return client;
     }
     
-    public void cancelResponse(WebSocketClient client) {
+    public void cancelResponse(WebSocketClient client, String callSid) {
 
         if (client == null || !client.isOpen()) {
             return;
@@ -183,7 +184,7 @@ public class OpenAIRealtimeService {
 
             client.send(objectMapper.writeValueAsString(event));
 
-            System.out.println("RESPONSE CANCEL inviato a OpenAI");
+            CallLogger.info(callSid, "RESPONSE CANCEL inviato a OpenAI");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -340,7 +341,7 @@ public class OpenAIRealtimeService {
     	client.send(objectMapper.writeValueAsString(responseCreate));
     }
 
-    public void sendAudio(WebSocketClient client, String twilioBase64Payload) {
+    public void sendAudio(WebSocketClient client, String twilioBase64Payload, String callSid) {
 
         if (client == null || !client.isOpen()) {
             return;
@@ -355,7 +356,7 @@ public class OpenAIRealtimeService {
             client.send(objectMapper.writeValueAsString(event));
 
         } catch (org.java_websocket.exceptions.WebsocketNotConnectedException e) {
-            System.out.println("OPENAI REALTIME non connesso, audio ignorato.");
+            CallLogger.info(callSid, "OPENAI REALTIME non connesso, audio ignorato.");
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -4,6 +4,7 @@ import javax.sql.DataSource;
 
 import org.springframework.stereotype.Repository;
 
+import it.sd.lucrezia.ai.util.CallLogger;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -12,10 +13,7 @@ public class TelefonataDao {
 
 	private final DataSource dataSource;
 
-	public Long insertTelefonata(String callSid,
-			String telefono,
-			Long idUtente,
-			Long idCondominio) {
+	public Long insertTelefonata(String callSid, String telefono, Long idUtente, Long idCondominio) {
 
 		String sql = """
 				    INSERT INTO telefonata (
@@ -57,7 +55,7 @@ public class TelefonataDao {
 		return null;
 	}
 
-	public void updateTicket(Long idTelefonata, Long idTicket) {
+	public void updateTicket(Long idTelefonata, Long idTicket, String callSid) {
 
 		if (idTelefonata == null || idTicket == null) {
 			return;
@@ -80,7 +78,7 @@ public class TelefonataDao {
 			ps.setLong(4, idTelefonata);
 
 			int updated = ps.executeUpdate();
-			System.out.println("TELEFONATA UPDATE TICKET - idTelefonata="
+			CallLogger.info(callSid, "TELEFONATA UPDATE TICKET - idTelefonata="
 					+ idTelefonata + " idTicket=" + idTicket + " updated=" + updated);
 
 		} catch (Exception e) {
@@ -88,7 +86,7 @@ public class TelefonataDao {
 		}
 	}
 
-	public void updateAudioUrl(Long idTelefonata, String urlAudio) {
+	public void updateAudioUrl(Long idTelefonata, String urlAudio, String callSid) {
 
 		if (idTelefonata == null || urlAudio == null || urlAudio.isBlank()) {
 			return;
@@ -107,7 +105,7 @@ public class TelefonataDao {
 			ps.setLong(2, idTelefonata);
 
 			int updated = ps.executeUpdate();
-			System.out.println("TELEFONATA UPDATE AUDIO - idTelefonata="
+			CallLogger.info(callSid, "TELEFONATA UPDATE AUDIO - idTelefonata="
 					+ idTelefonata + " updated=" + updated);
 
 		} catch (Exception e) {
@@ -121,7 +119,8 @@ public class TelefonataDao {
 			String trascrizione,
 			long durataSecondi,
 			int numeroInterruzioni,
-			int numeroTool) {
+			int numeroTool,
+			String callSid) {
 
 		if (idTelefonata == null) {
 			return;
@@ -151,7 +150,7 @@ public class TelefonataDao {
 			ps.setLong(7, idTelefonata);
 
 			int updated = ps.executeUpdate();
-			System.out.println("TELEFONATA CHIUDI - idTelefonata="
+			CallLogger.info(callSid, "TELEFONATA CHIUDI - idTelefonata="
 					+ idTelefonata
 					+ " esito=" + esito
 					+ " motivoChiusura=" + motivoChiusura
@@ -162,9 +161,7 @@ public class TelefonataDao {
 		}
 	}
 
-	public void updateEsito(Long idTelefonata,
-			String esito,
-			String motivoChiusura) {
+	public void updateEsito(Long idTelefonata, String esito, String motivoChiusura, String callSid) {
 
 		if (idTelefonata == null) {
 			return;
@@ -186,7 +183,7 @@ public class TelefonataDao {
 
 			int updated = ps.executeUpdate();
 
-			System.out.println("TELEFONATA UPDATE ESITO - idTelefonata="
+			CallLogger.info(callSid, "TELEFONATA UPDATE ESITO - idTelefonata="
 					+ idTelefonata + " esito=" + esito + " updated=" + updated);
 
 		} catch (Exception e) {
