@@ -25,6 +25,9 @@ public class OpenAIRealtimeService {
     @Value("${openai.api-key}")
     private String openAiApiKey;
 
+    private final static String OPENAI_URL_MODEL = "wss://api.openai.com/v1/realtime?model=gpt-realtime-2";
+    private final static String OPENAI_MODEL = "gpt-realtime-2";
+    
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final LucreziaPromptBuilder promptBuilder;
 
@@ -33,7 +36,7 @@ public class OpenAIRealtimeService {
                                              String condominio,
                                              IOpenAIRealtimeAudioListener listener) throws Exception {
 
-        URI uri = new URI("wss://api.openai.com/v1/realtime?model=gpt-realtime");
+        URI uri = new URI(OPENAI_URL_MODEL);
 
         WebSocketClient client = new WebSocketClient(uri) {
 
@@ -200,7 +203,7 @@ public class OpenAIRealtimeService {
                 "type", "session.update",
                 "session", Map.of(
                         "type", "realtime",
-                        "model", "gpt-realtime",
+                        "model", OPENAI_MODEL,
                         "output_modalities", new String[]{"audio"},
                         "instructions",
                         promptBuilder.buildVoiceSystemPrompt(nome, condominio)
@@ -277,6 +280,9 @@ public class OpenAIRealtimeService {
                                 )
                         },
                         "tool_choice", "auto",
+                        "reasoning", Map.of(
+                                "effort", "low"
+                        ),
                         "audio", Map.of(
                         		"input", Map.of(
                         		        "format", Map.of(
