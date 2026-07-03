@@ -293,7 +293,7 @@ public class OpenAIRealtimeService {
                         		        "transcription", Map.of(
                         		                "model", "gpt-4o-transcribe",
                         		                "language", "it",
-                        		                "prompt", "Trascrizione telefonica italiana di un condomino che parla con Lucrezia, assistente del condominio."
+                        		                "prompt", "Telefonata in italiano tra un condomino e Lucrezia. Il contesto è amministrazione condominiale. Ignora rumori, colpi di tosse, suoni di fondo e parole non pertinenti. Non trascrivere parole straniere se non chiaramente pronunciate."
                         		        ),
                         		        "turn_detection", Map.of(
                         		                "type", "server_vad",

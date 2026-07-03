@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
-	private static final long BARGE_IN_DEBOUNCE_MS = 800;
+	private static final long BARGE_IN_DEBOUNCE_MS = 700;
 	
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -291,18 +291,22 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                         	    return;
                         	}
 
-                            CallLogger.info(voiceContext, "BARGE-IN confermato dopo debounce");
+                        	CallLogger.info(voiceContext, "BARGE-IN confermato dopo debounce");
 
-                            sendClearToTwilio(streamSid);
+                        	sendClearToTwilio(streamSid);
 
-                            WebSocketClient client = openAiClients.get(streamSid);
-                            if (client != null && client.isOpen()) {
-                                openAIRealtimeClient.cancelResponse(client, callSid);
-                            }
+                        	if (openAiSpeakingNow) {
+                        	    WebSocketClient client = openAiClients.get(streamSid);
+                        	    if (client != null && client.isOpen()) {
+                        	        openAIRealtimeClient.cancelResponse(client, callSid);
+                        	    }
+                        	} else {
+                        	    CallLogger.info(voiceContext, "RESPONSE CANCEL non inviato: OpenAI non sta generando");
+                        	}
 
-                            assistantSpeaking.put(streamSid, false);
-                            twilioAudioPlaying.put(streamSid, false);
-                            voiceContext.incrementNumeroInterruzioni();
+                        	assistantSpeaking.put(streamSid, false);
+                        	twilioAudioPlaying.put(streamSid, false);
+                        	voiceContext.incrementNumeroInterruzioni();
 
                         }, BARGE_IN_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
 
