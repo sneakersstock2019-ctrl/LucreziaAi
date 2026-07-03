@@ -181,7 +181,13 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     
                     @Override
                     public void onUserTranscriptDone(String transcript) {
-                    	CallLogger.info(callSid, "UTENTE HA DETTO:" + transcript);
+                    	CallLogger.info(callSid, "UTENTE HA DETTO: " + transcript);
+                    	CallLogger.info(callSid, "DURANTE QUESTO CONTESTO: " + voiceContext);
+                    	
+                    	if (!voiceContext.isInitialGreetingCompleted()) {
+                            CallLogger.info(callSid, "INPUT UTENTE ignorato durante saluto iniziale: " + transcript);
+                            return;
+                        }
                     	
                         if (SpeechFilter.isNoiseOrFiller(transcript)) {
                             CallLogger.info(callSid, "INPUT UTENTE ignorato come rumore/filler: " + transcript);
