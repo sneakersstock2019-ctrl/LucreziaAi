@@ -204,8 +204,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                     @Override
                     public void onError(String rawMessage) {
-                        CallLogger.info(callSid, "OPENAI REALTIME LISTENER ERROR:");
-                        System.out.println(rawMessage);
+                        CallLogger.info(callSid, "OPENAI REALTIME LISTENER ERROR: " + rawMessage);
                     }
 
                     @Override
