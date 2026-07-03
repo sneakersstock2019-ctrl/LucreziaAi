@@ -25,8 +25,10 @@ public class OpenAIRealtimeService {
     @Value("${openai.api-key}")
     private String openAiApiKey;
 
-    private final static String OPENAI_URL_MODEL = "wss://api.openai.com/v1/realtime?model=gpt-realtime-2";
-    private final static String OPENAI_MODEL = "gpt-realtime-2";
+//    private final static String OPENAI_URL_MODEL = "wss://api.openai.com/v1/realtime?model=gpt-realtime-2";
+//    private final static String OPENAI_MODEL = "gpt-realtime-2";
+    private final static String OPENAI_URL_MODEL = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
+    private final static String OPENAI_MODEL = "gpt-realtime";
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final LucreziaPromptBuilder promptBuilder;
@@ -282,9 +284,6 @@ public class OpenAIRealtimeService {
                                 )
                         },
                         "tool_choice", "auto",
-                        "reasoning", Map.of(
-                                "effort", "low"
-                        ),
                         "audio", Map.of(
                         		"input", Map.of(
                         		        "format", Map.of(
