@@ -145,9 +145,9 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 CallLogger.info(callSid, "PARAM ID_CONDOMINIO = " + idCondominio);
                 CallLogger.info(callSid, "PARAM SALUTO_VIP = " + salutoVip);
                 CallLogger.info(callSid, "TICKET APERTI = " + ticketAperti.size());
-                CallLogger.info(callSid, "Apro connessione OpenAI Realtime Voice...");
                 CallLogger.info(callSid, "############################");
 
+                CallLogger.info(callSid, "Apro connessione OpenAI Realtime Voice ...");
                 IOpenAIRealtimeAudioListener listener = new IOpenAIRealtimeAudioListener() {
 
                     @Override
@@ -167,15 +167,12 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
                     @Override
                     public void onAssistantTranscriptDelta(String delta) {
-                        System.out.print(delta);
                     }
 
                     @Override
                     public void onAssistantTranscriptDone(String transcript) {
                         CallLogger.info(callSid, "LUCREZIA HA DETTO:" + transcript);
-                        voiceContext.setTrascrizioneChiamata(
-                                voiceContext.getTrascrizioneChiamata()
-                                        + "\nLucrezia: " + transcript + "\n"
+                        voiceContext.setTrascrizioneChiamata(voiceContext.getTrascrizioneChiamata() + "\nLucrezia: " + transcript + "\n"
                         );
                     }
                     
@@ -241,7 +238,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                     @Override
                     public void onAudioDelta(String base64Audio) {
                         assistantSpeaking.put(streamSid, true);
-                        sendAudioToTwilio(streamSid, base64Audio);
+                        sendAudioToTwilio(streamSid, base64Audio, callSid);
                     }
                     
                     @Override
@@ -367,6 +364,8 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 String streamSid = root.path("streamSid").asText();
                 VoiceContext context = voiceContexts.get(streamSid);
 
+                CallLogger.info(context, "LUCREZIA HA FINITO DI PARLARE");
+                
                 twilioAudioPlaying.put(streamSid, false);
 
                 CallLogger.info(context, "TWILIO MARK ricevuto - audio riprodotto completamente");
@@ -414,7 +413,7 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
         }
     }
 
-    private void sendAudioToTwilio(String streamSid, String base64Audio) {
+    private void sendAudioToTwilio(String streamSid, String base64Audio, String callSid) {
 
         if (streamSid == null || streamSid.isBlank()) {
             return;
@@ -441,6 +440,13 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
 
             String json = objectMapper.writeValueAsString(event);
 
+            if (!Boolean.TRUE.equals(twilioAudioPlaying.get(streamSid))) {
+
+                twilioAudioPlaying.put(streamSid, true);
+
+                CallLogger.info(callSid, "LUCREZIA HA INIZIATO A PARLARE");
+            }
+            
             synchronized (twilioSession) {
                 twilioSession.sendMessage(new TextMessage(json));
             }

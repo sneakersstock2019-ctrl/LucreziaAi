@@ -58,25 +58,25 @@ public class OpenAIRealtimeService {
                     String type = root.path("type").asText();
 
                     if ("error".equals(type)) {
-                        CallLogger.info(callSid, "OPENAI REALTIME ERROR EVENT RAW = " + message);
+                        CallLogger.info(callSid, "OPENAI REALTIME: ERROR EVENT RAW = " + message);
                         listener.onError(message);
                         return;
                     }
 
                     if ("session.updated".equals(type)) {
-                        CallLogger.info(callSid, "OPENAI REALTIME VOICE SESSION UPDATED");
+                        CallLogger.info(callSid, "OPENAI REALTIME:  VOICE SESSION UPDATED");
                         listener.onSessionReady();
                         return;
                     }
 
                     if ("input_audio_buffer.speech_started".equals(type)) {
-                        CallLogger.info(callSid, "UTENTE HA INIZIATO A PARLARE");
+                        CallLogger.info(callSid, "OPENAI REALTIME: UTENTE HA INIZIATO A PARLARE");
                         listener.onUserSpeechStarted();
                         return;
                     }
 
                     if ("input_audio_buffer.speech_stopped".equals(type)) {
-                        CallLogger.info(callSid, "UTENTE HA FINITO DI PARLARE");
+                        CallLogger.info(callSid, "OPENAI REALTIME: UTENTE HA FINITO DI PARLARE");
                         listener.onUserSpeechStopped();
                         return;
                     }
@@ -86,9 +86,8 @@ public class OpenAIRealtimeService {
                         String name = root.path("name").asText();
                         String arguments = root.path("arguments").asText();
 
-                        CallLogger.info(callSid, "OPENAI FUNCTION CALL = " + name);
-                        CallLogger.info(callSid, "CALL ID = " + callId);
-                        CallLogger.info(callSid, "ARGUMENTS = " + arguments);
+                        CallLogger.info(callSid, "OPENAI REALTIME: FUNCTION CALL = " + name);
+                        CallLogger.info(callSid, "OPENAI REALTIME: ARGUMENTS = " + arguments);
 
                         listener.onFunctionCall(callId, name, arguments);
                         return;
@@ -136,26 +135,29 @@ public class OpenAIRealtimeService {
                     
                     if ("response.output_audio.done".equals(type)) {
                         listener.onAssistantAudioDone();
-                        CallLogger.info(callSid, "OPENAI REALTIME TYPE = " + type);
+                        CallLogger.info(callSid, "OPENAI REALTIME: AUDIO DONE");
                         return;
                     }
 
                     if ("response.done".equals(type)) {
-                        CallLogger.info(callSid, "OPENAI RESPONSE DONE");
+                        CallLogger.info(callSid, "OPENAI REALTIME: RESPONSE DONE");
+                        return;
+                    }
+                    
+                    if ("session.created".equals(type)) {
+                        CallLogger.info(callSid, "OPENAI REALTIME: SESSION CREATED");
                         return;
                     }
 
-                    CallLogger.info(callSid, "OPENAI REALTIME TYPE = " + type);
-
                 } catch (Exception e) {
-                    CallLogger.info(callSid, "OPENAI REALTIME RAW MESSAGE = " + message);
+                    CallLogger.info(callSid, "OPENAI REALTIME: RAW MESSAGE = " + message);
                     e.printStackTrace();
                 }
             }
 
             @Override
             public void onMessage(ByteBuffer bytes) {
-                CallLogger.info(callSid, "OPENAI REALTIME BINARY MESSAGE ricevuto");
+                CallLogger.info(callSid, "OPENAI REALTIME: BINARY MESSAGE ricevuto");
             }
 
             @Override
