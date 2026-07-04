@@ -28,7 +28,8 @@ public class UtenteDao {
                 u.telefono,
                 u.ruolo,
                 c.id AS id_condominio,
-                c.nome AS nome_condominio
+                c.nome AS nome_condominio,
+                c.elevenlabs_agent_id as elevenlabs_agent_id
             FROM utenti u
             JOIN mappa_utenti_condomini muc ON muc.id_utente = u.id
             JOIN condomini c ON c.id = muc.id_condominio
@@ -54,6 +55,7 @@ public class UtenteDao {
                     utente.setRuolo(rs.getString("ruolo"));
                     utente.setIdCondominio(rs.getLong("id_condominio"));
                     utente.setNomeCondominio(rs.getString("nome_condominio"));
+                    utente.setElevenlabsAgentId(rs.getString("elevenlabs_agent_id"));
                     return utente;
                 }
             }

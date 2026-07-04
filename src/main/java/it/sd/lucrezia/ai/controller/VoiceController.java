@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.dao.TicketConversazioneDao;
+import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
 import it.sd.lucrezia.ai.service.elevenlabs.ElevenLabsService;
 import it.sd.lucrezia.ai.service.voice.VoiceCallContextRegistry;
@@ -26,6 +27,7 @@ public class VoiceController {
     private String elevenLabsBetaPhone;
     
 	private final UtenteDao utenteDao;
+	private final TicketDao ticketDao;
     private final TicketConversazioneDao ticketConversazioneDao;
     private final PhoneUtils phoneUtils;
     private final VoiceCallContextRegistry voiceCallContextRegistry;
@@ -57,7 +59,9 @@ public class VoiceController {
             
             if (phone.equals(elevenLabsBetaPhone)) {
                 System.out.println("ROUTING VOICE ENGINE = ELEVENLABS");
-                return elevenLabsService.registerTwilioCall(from, to);
+                int ticketAperti = ticketDao.findOpenTicketsByUtente(utente.getId()).size();
+
+                return elevenLabsService.registerInboundCall(from, to, utente ,ticketAperti);
             }
 
             return buildRealtimeConnectResponse(utente, phone);
