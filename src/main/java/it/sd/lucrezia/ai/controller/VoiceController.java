@@ -1,5 +1,6 @@
 package it.sd.lucrezia.ai.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +12,7 @@ import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.bean.VoiceContext;
 import it.sd.lucrezia.ai.dao.TicketConversazioneDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
+import it.sd.lucrezia.ai.service.elevenlabs.ElevenLabsService;
 import it.sd.lucrezia.ai.service.voice.VoiceCallContextRegistry;
 import it.sd.lucrezia.ai.util.PhoneUtils;
 import lombok.RequiredArgsConstructor;
@@ -20,21 +22,21 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class VoiceController {
 
-    private final UtenteDao utenteDao;
+    @Value("${voice.elevenlabs.beta-phone}")
+    private String elevenLabsBetaPhone;
+    
+	private final UtenteDao utenteDao;
     private final TicketConversazioneDao ticketConversazioneDao;
     private final PhoneUtils phoneUtils;
     private final VoiceCallContextRegistry voiceCallContextRegistry;
-    
-    private static final String VIP_1 = "3490000000";
-    private static final String VIP_2 = "3382702339";
-    private static final String VIP_3 = "3277525353";
+    private final ElevenLabsService elevenLabsService;
 
     @RequestMapping(
             value = "/incoming",
             method = {RequestMethod.GET, RequestMethod.POST},
             produces = "application/xml"
     )
-    public String incomingCall(@RequestParam(value = "From", required = false) String from) {
+    public String incomingCall(@RequestParam(value = "From", required = false) String from, @RequestParam(value = "To", required = false) String to) {
 
         try {
             String phone = phoneUtils.normalizePhone(from);
@@ -52,11 +54,13 @@ public class VoiceController {
                         "Buongiorno, sono Lucrezia. Il numero da cui sta chiamando non risulta abilitato al servizio."
                 );
             }
+            
+            if (phone.equals(elevenLabsBetaPhone)) {
+                System.out.println("ROUTING VOICE ENGINE = ELEVENLABS");
+                return elevenLabsService.registerTwilioCall(from, to);
+            }
 
-            boolean salutoVip =
-                    VIP_1.equals(phone) || VIP_2.equals(phone) || VIP_3.equals(phone);
-
-            return buildRealtimeConnectResponse(utente, phone, salutoVip);
+            return buildRealtimeConnectResponse(utente, phone);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -89,7 +93,7 @@ public class VoiceController {
         return ResponseEntity.ok("OK");
     }
     
-    private String buildRealtimeConnectResponse(Utente utente, String phone, boolean salutoVip) {
+    private String buildRealtimeConnectResponse(Utente utente, String phone) {
 
         return """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -101,7 +105,6 @@ public class VoiceController {
                         <Parameter name="condominio" value="%s"/>
                         <Parameter name="idUtente" value="%s"/>
                         <Parameter name="idCondominio" value="%s"/>
-                        <Parameter name="salutoVip" value="%s"/>
                     </Stream>
                 </Connect>
             </Response>
@@ -110,8 +113,7 @@ public class VoiceController {
                 escapeXml(utente.getNome()),
                 escapeXml(utente.getNomeCondominio()),
                 escapeXml(utente.getId().toString()),
-                escapeXml(utente.getIdCondominio().toString()),
-                salutoVip
+                escapeXml(utente.getIdCondominio().toString())
         );
     }
     

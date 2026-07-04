@@ -21,7 +21,6 @@ public class VoiceContext {
     private String recordingSid;
     private boolean endCallRequested;
     private long lastUserSpeechTime;
-    private boolean salutoVip;
     private Long idTelefonata;
     private long startCallMillis;
     private String esitoTelefonata;

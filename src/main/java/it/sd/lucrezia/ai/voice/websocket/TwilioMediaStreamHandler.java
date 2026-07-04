@@ -87,7 +87,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 String condominio = params.path("condominio").asText();
                 Long idUtente = params.path("idUtente").asLong();
                 Long idCondominio = params.path("idCondominio").asLong();
-                boolean salutoVip = params.path("salutoVip").asBoolean(false);
 
                 List<TicketStatusInfo> ticketAperti = new ArrayList<>();
                 try {
@@ -106,7 +105,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 voiceContext.setIdCondominio(idCondominio);
                 voiceContext.setCallSid(callSid);
                 voiceContext.setRecordingSid(recordingSid);
-                voiceContext.setSalutoVip(salutoVip);
                 voiceContext.setMotivoChiusura("IN_CORSO");
 
                 Long idTelefonata = telefonataDao.insertTelefonata(
@@ -143,7 +141,6 @@ public class TwilioMediaStreamHandler extends TextWebSocketHandler {
                 CallLogger.info(callSid, "PARAM CONDOMINIO = " + condominio);
                 CallLogger.info(callSid, "PARAM ID_UTENTE = " + idUtente);
                 CallLogger.info(callSid, "PARAM ID_CONDOMINIO = " + idCondominio);
-                CallLogger.info(callSid, "PARAM SALUTO_VIP = " + salutoVip);
                 CallLogger.info(callSid, "TICKET APERTI = " + ticketAperti.size());
                 CallLogger.info(callSid, "############################");
 

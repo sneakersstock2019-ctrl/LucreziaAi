@@ -1,7 +1,5 @@
 package it.sd.lucrezia.ai.prompt;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.springframework.stereotype.Component;
 
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
@@ -575,58 +573,9 @@ public class LucreziaPromptBuilder {
 
 	    int numeroTicket = context.getNumeroTicketAperti();
 
-	    String salutoVip = "";
-
-	    if (context.isSalutoVip()) {
-
-	        String[] saluti = {
-
-	                "Ciao %s, finalmente ho il piacere di parlare con lei. Mi hanno parlato tantissimo di lei: pare sia un vero guru del mondo condominiale.",
-
-	                "Carissimo %s, finalmente ci conosciamo! Ho sentito parlare molto di lei e sono davvero felice di poterla assistere.",
-
-	                "Ciao %s, è davvero un piacere sentirla. Da tempo mi raccontano del suo lavoro nel mondo dei condomini e finalmente abbiamo occasione di parlare.",
-
-	                "Caro %s. Finalmente ho il piacere di conoscerla. Ho sentito parlare molto della sua esperienza nel settore condominiale.",
-
-	                "Ciao %s! Finalmente ci sentiamo. Da quello che mi raccontano, nel mondo dei condomini il suo nome è piuttosto conosciuto!",
-
-	                "Ciao %s, è un vero piacere poter parlare con lei. Ho sentito parlare molto della sua professionalità e sono lieta di poterla assistere.",
-
-	                "Ciao %s. Finalmente posso darle il benvenuto personalmente. Confesso che avevo sentito parlare di lei ancora prima della sua telefonata!",
-
-	                "Buongiorno %s. Finalmente abbiamo occasione di sentirci. Mi hanno raccontato che quando si parla di amministrazione condominiale, lei è uno dei riferimenti.",
-
-	                "Ciao %s, finalmente ho il piacere di parlare con lei. Devo ammettere che ero curiosa di conoscerla dopo tutto quello che ho sentito sul suo lavoro."
-	        };
-
-	        String frase = saluti[ThreadLocalRandom.current().nextInt(saluti.length)]
-	                .formatted(context.getNome());
-
-	        salutoVip = """
-	                Prima del resto, usa questo saluto speciale:
-
-	                "%s"
-
-	                Subito dopo, nella stessa risposta, devi obbligatoriamente:
-	                - presentarti come Lucrezia;
-	                - dire che sei l'assistente vocale del condominio %s;
-	                - chiedere come puoi aiutarlo oggi.
-
-	                Esempio di struttura:
-	                "%s Sono Lucrezia, l'assistente vocale del condominio %s. Mi dica pure come posso aiutarla oggi."
-
-	                Non fermarti mai dopo il solo saluto speciale.
-	                Non ripetere il nome del condomino subito dopo il saluto.
-	                """
-	                .formatted(frase, context.getCondominio(), frase, context.getCondominio());
-	    }
-
 	    if (numeroTicket == 1) {
 	        return """
 	                Inizia la telefonata.
-
-	                %s
 
 	                Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
 	                Presentati come Lucrezia, assistente vocale del condominio.
@@ -639,15 +588,12 @@ public class LucreziaPromptBuilder {
 	                Non essere robotica.
 	                Non ripetere il nome più di una volta.
 	                Non inventare dettagli sulla segnalazione.
-	                """
-	                .formatted(salutoVip);
+	                """;
 	    }
 
 	    if (numeroTicket > 1) {
 	        return """
 	                Inizia la telefonata.
-
-	                %s
 
 	                Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
 	                Presentati come Lucrezia, assistente vocale del condominio.
@@ -659,14 +605,11 @@ public class LucreziaPromptBuilder {
 	                Non essere robotica.
 	                Non ripetere il nome più di una volta.
 	                Non inventare dettagli sulle segnalazioni.
-	                """
-	                .formatted(salutoVip);
+	                """;
 	    }
 
 	    return """
 	            Inizia la telefonata.
-
-	            %s
 
 	            Saluta il condomino chiamandolo per nome solo se non lo hai già fatto nel saluto speciale.
 	            Presentati come Lucrezia.
@@ -678,7 +621,7 @@ public class LucreziaPromptBuilder {
 	            Non essere robotica.
 	            Non ripetere il nome più di una volta.
 	            """
-	            .formatted(salutoVip, context.getCondominio());
+	            .formatted(context.getCondominio());
 	}
 	
     private String safe(String value) {
