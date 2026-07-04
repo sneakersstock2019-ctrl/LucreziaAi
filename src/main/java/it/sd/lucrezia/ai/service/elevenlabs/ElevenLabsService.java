@@ -24,6 +24,9 @@ public class ElevenLabsService {
     public String registerTwilioCall(String fromNumber, String toNumber) throws Exception {
 
         String url = "https://api.elevenlabs.io/v1/convai/twilio/register-call";
+        
+        System.out.println("apiKey: " + apiKey);
+        System.out.println("agentId: " + agentId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
