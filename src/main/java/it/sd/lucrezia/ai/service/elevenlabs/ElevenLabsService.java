@@ -29,10 +29,11 @@ public class ElevenLabsService {
         headers.set("xi-api-key", apiKey);
 
         Map<String, Object> dynamicVariables = Map.of(
+                "id_utente", String.valueOf(utente.getId()),
+                "id_condominio", String.valueOf(utente.getIdCondominio()),
                 "nome", safe(utente.getNome()),
+                "telefono", safe(fromNumber),
                 "condominio", safe(utente.getNomeCondominio()),
-                "id_utente", utente.getId(),
-                "id_condominio", utente.getIdCondominio(),
                 "ticket_aperti", ticketAperti
         );
 
