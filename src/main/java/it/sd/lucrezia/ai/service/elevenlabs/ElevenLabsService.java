@@ -34,7 +34,8 @@ public class ElevenLabsService {
                 "nome", safe(utente.getNome()),
                 "telefono", safe(fromNumber),
                 "condominio", safe(utente.getNomeCondominio()),
-                "ticket_aperti", ticketAperti
+                "ticket_aperti", ticketAperti,
+                "first_message", buildFirstMessage(utente, ticketAperti)
         );
 
         Map<String, Object> clientData = Map.of(
@@ -64,5 +65,20 @@ public class ElevenLabsService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+    
+    private String buildFirstMessage(Utente utente, int ticketAperti) {
+
+        String nome = safe(utente.getNome());
+
+        if (ticketAperti <= 0) {
+            return "Ciao " + nome + ", sono Lucrezia. Come posso aiutarti oggi?";
+        }
+
+        if (ticketAperti == 1) {
+            return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai una segnalazione ancora aperta. Vuoi che ti aggiorni sul suo stato?";
+        }
+
+        return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai alcune segnalazioni ancora aperte. Vuoi che ti aggiorni sul loro stato?";
     }
 }
