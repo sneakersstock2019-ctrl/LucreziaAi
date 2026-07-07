@@ -76,9 +76,9 @@ public class ElevenLabsService {
         }
 
         if (ticketAperti == 1) {
-            return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai una segnalazione ancora aperta. Vuoi che ti aggiorni sul suo stato?";
+            return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai una segnalazione ancora aperta. Vuoi che ti aggiorni sul suo stato oppure vuoi segnalarmi altro?";
         }
 
-        return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai alcune segnalazioni ancora aperte. Vuoi che ti aggiorni sul loro stato?";
+        return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai alcune segnalazioni ancora aperte. Vuoi che ti aggiorni sul loro stato oppure vuoi segnalarmi altro?";
     }
 }
