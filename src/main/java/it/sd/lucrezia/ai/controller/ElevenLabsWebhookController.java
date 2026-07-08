@@ -77,7 +77,6 @@ public class ElevenLabsWebhookController {
                 "COMPLETATA",
                 trascrizione,
                 durata,
-                0,
                 data.path("tool_names").size(),
                 callSid
         );

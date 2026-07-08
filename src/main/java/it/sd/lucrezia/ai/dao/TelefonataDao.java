@@ -23,10 +23,9 @@ public class TelefonataDao {
 				        id_condominio,
 				        esito,
 				        motivo_chiusura,
-				        numero_interruzioni,
 				        numero_tool
 				    )
-				    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				    VALUES (?, ?, ?, ?, ?, ?, ?)
 				    RETURNING id
 				""";
 
@@ -40,7 +39,6 @@ public class TelefonataDao {
 			ps.setString(5, "IN_CORSO");
 			ps.setString(6, "IN_CORSO");
 			ps.setInt(7, 0);
-			ps.setInt(8, 0);
 
 			try (var rs = ps.executeQuery()) {
 				if (rs.next()) {
@@ -59,7 +57,6 @@ public class TelefonataDao {
 			String esito,
 			String trascrizione,
 			long durataSecondi,
-			int numeroInterruzioni,
 			int numeroTool,
 			String callSid) {
 
@@ -80,7 +77,6 @@ public class TelefonataDao {
 					    trascrizione = ?,
 					    data_fine = CURRENT_TIMESTAMP,
 					    durata_secondi = ?,
-					    numero_interruzioni = ?,
 					    numero_tool = ?
 					WHERE id = ?
 				""";
@@ -91,9 +87,8 @@ public class TelefonataDao {
 			ps.setString(1, esito);
 			ps.setString(2, trascrizione);
 			ps.setLong(3, durataSecondi);
-			ps.setInt(4, numeroInterruzioni);
-			ps.setInt(5, numeroTool);
-			ps.setLong(6, idTelefonata);
+			ps.setInt(4, numeroTool);
+			ps.setLong(5, idTelefonata);
 
 			int updated = ps.executeUpdate();
 			CallLogger.info(callSid, "TELEFONATA CHIUDI - idTelefonata="
