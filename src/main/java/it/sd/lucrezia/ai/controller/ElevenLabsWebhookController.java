@@ -75,7 +75,6 @@ public class ElevenLabsWebhookController {
         telefonataDao.chiudiTelefonata(
                 idTelefonata,
                 "COMPLETATA",
-                "CHIAMATA_TERMINATA",
                 trascrizione,
                 durata,
                 0,

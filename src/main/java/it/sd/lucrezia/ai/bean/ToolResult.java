@@ -1,4 +1,4 @@
-package it.sd.lucrezia.ai.bean.tool;
+package it.sd.lucrezia.ai.bean;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

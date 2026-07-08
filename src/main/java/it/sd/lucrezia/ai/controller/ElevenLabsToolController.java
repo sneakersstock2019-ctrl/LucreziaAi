@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
-import it.sd.lucrezia.ai.bean.tool.ToolNextAction;
-import it.sd.lucrezia.ai.bean.tool.ToolResult;
+import it.sd.lucrezia.ai.bean.ToolNextAction;
+import it.sd.lucrezia.ai.bean.ToolResult;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
@@ -109,6 +109,34 @@ public class ElevenLabsToolController {
                         "priorita", priorita,
                         "area", area,
                         "richiedi_foto", richiediFoto
+                )
+        );
+    }
+    
+    @PostMapping("/endCall")
+    public ToolResult<Map<String, Object>> endCall(@RequestBody Map<String, Object> body) {
+
+        logTool("endCall", body);
+
+        Long idTelefonata = getLong(body, "id_telefonata");
+        String callSid = safeRaw(body.get("call_sid"));
+
+        if (idTelefonata == null) {
+            return missingField("id_telefonata");
+        }
+
+        telefonataDao.updateEsito(
+                idTelefonata,
+                "COMPLETATA",
+                "CHIUSURA_LUCREZIA",
+                callSid
+        );
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.END_CALL,
+                Map.of(
+                        "id_telefonata", idTelefonata
                 )
         );
     }

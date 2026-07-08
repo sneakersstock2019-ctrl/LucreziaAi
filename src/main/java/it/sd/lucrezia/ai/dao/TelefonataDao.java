@@ -55,67 +55,8 @@ public class TelefonataDao {
 		return null;
 	}
 
-	public void updateTicket(Long idTelefonata, Long idTicket, String callSid) {
-
-		if (idTelefonata == null || idTicket == null) {
-			return;
-		}
-
-		String sql = """
-				    UPDATE telefonata
-				    SET id_ticket = ?,
-				        esito = ?,
-				        motivo_chiusura = ?
-				    WHERE id = ?
-				""";
-
-		try (var conn = dataSource.getConnection();
-				var ps = conn.prepareStatement(sql)) {
-
-			ps.setLong(1, idTicket);
-			ps.setString(2, "TICKET_APERTO");
-			ps.setString(3, "TICKET_APERTO");
-			ps.setLong(4, idTelefonata);
-
-			int updated = ps.executeUpdate();
-			CallLogger.info(callSid, "TELEFONATA UPDATE TICKET - idTelefonata="
-					+ idTelefonata + " idTicket=" + idTicket + " updated=" + updated);
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void updateAudioUrl(Long idTelefonata, String urlAudio, String callSid) {
-
-		if (idTelefonata == null || urlAudio == null || urlAudio.isBlank()) {
-			return;
-		}
-
-		String sql = """
-				    UPDATE telefonata
-				    SET url_audio = ?
-				    WHERE id = ?
-				""";
-
-		try (var conn = dataSource.getConnection();
-				var ps = conn.prepareStatement(sql)) {
-
-			ps.setString(1, urlAudio);
-			ps.setLong(2, idTelefonata);
-
-			int updated = ps.executeUpdate();
-			CallLogger.info(callSid, "TELEFONATA UPDATE AUDIO - idTelefonata="
-					+ idTelefonata + " updated=" + updated);
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
 	public void chiudiTelefonata(Long idTelefonata,
 			String esito,
-			String motivoChiusura,
 			String trascrizione,
 			long durataSecondi,
 			int numeroInterruzioni,
@@ -127,64 +68,38 @@ public class TelefonataDao {
 		}
 
 		String sql = """
-				    UPDATE telefonata
-				    SET esito = COALESCE(?, esito),
-				        motivo_chiusura = COALESCE(?, motivo_chiusura),
-				        trascrizione = ?,
-				        data_fine = CURRENT_TIMESTAMP,
-				        durata_secondi = ?,
-				        numero_interruzioni = ?,
-				        numero_tool = ?
-				    WHERE id = ?
+					UPDATE telefonata
+					SET esito = COALESCE(?, esito),
+					    motivo_chiusura = CASE
+					        WHEN motivo_chiusura IS NULL
+					          OR motivo_chiusura = ''
+					          OR motivo_chiusura = 'IN_CORSO'
+					        THEN 'CHIUSURA_UTENTE'
+					        ELSE motivo_chiusura
+					    END,
+					    trascrizione = ?,
+					    data_fine = CURRENT_TIMESTAMP,
+					    durata_secondi = ?,
+					    numero_interruzioni = ?,
+					    numero_tool = ?
+					WHERE id = ?
 				""";
 
 		try (var conn = dataSource.getConnection();
 				var ps = conn.prepareStatement(sql)) {
 
 			ps.setString(1, esito);
-			ps.setString(2, motivoChiusura);
-			ps.setString(3, trascrizione);
-			ps.setLong(4, durataSecondi);
-			ps.setInt(5, numeroInterruzioni);
-			ps.setInt(6, numeroTool);
-			ps.setLong(7, idTelefonata);
+			ps.setString(2, trascrizione);
+			ps.setLong(3, durataSecondi);
+			ps.setInt(4, numeroInterruzioni);
+			ps.setInt(5, numeroTool);
+			ps.setLong(6, idTelefonata);
 
 			int updated = ps.executeUpdate();
 			CallLogger.info(callSid, "TELEFONATA CHIUDI - idTelefonata="
 					+ idTelefonata
 					+ " esito=" + esito
-					+ " motivoChiusura=" + motivoChiusura
 					+ " updated=" + updated);
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void updateEsito(Long idTelefonata, String esito, String motivoChiusura, String callSid) {
-
-		if (idTelefonata == null) {
-			return;
-		}
-
-		String sql = """
-				UPDATE telefonata
-				SET esito = ?,
-				motivo_chiusura = ?
-				WHERE id = ?
-				""";
-
-		try (var conn = dataSource.getConnection();
-				var ps = conn.prepareStatement(sql)) {
-
-			ps.setString(1, esito);
-			ps.setString(2, motivoChiusura);
-			ps.setLong(3, idTelefonata);
-
-			int updated = ps.executeUpdate();
-
-			CallLogger.info(callSid, "TELEFONATA UPDATE ESITO - idTelefonata="
-					+ idTelefonata + " esito=" + esito + " updated=" + updated);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -305,5 +220,35 @@ public class TelefonataDao {
 	    }
 
 	    return null;
+	}
+	
+	public void updateEsito(Long idTelefonata, String esito, String motivoChiusura, String callSid) {
+
+		if (idTelefonata == null) {
+			return;
+		}
+
+		String sql = """
+				UPDATE telefonata
+				SET esito = ?,
+				motivo_chiusura = ?
+				WHERE id = ?
+				""";
+
+		try (var conn = dataSource.getConnection();
+				var ps = conn.prepareStatement(sql)) {
+
+			ps.setString(1, esito);
+			ps.setString(2, motivoChiusura);
+			ps.setLong(3, idTelefonata);
+
+			int updated = ps.executeUpdate();
+
+			CallLogger.info(callSid, "TELEFONATA UPDATE ESITO - idTelefonata="
+					+ idTelefonata + " esito=" + esito + " updated=" + updated);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
