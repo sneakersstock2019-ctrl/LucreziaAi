@@ -83,4 +83,19 @@ public class ElevenLabsService {
 
         return "Ciao " + nome + ", sono Lucrezia. Ho visto che hai alcune segnalazioni ancora aperte. Vuoi che ti aggiorni sul loro stato oppure vuoi segnalarmi altro?";
     }
+    
+    public String getConversations() {
+
+        String url = "https://api.elevenlabs.io/v1/convai/conversations";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("xi-api-key", apiKey);
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        ResponseEntity<String> response =
+                restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+
+        return response.getBody();
+    }
 }

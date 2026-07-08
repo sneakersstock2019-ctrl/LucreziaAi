@@ -47,6 +47,7 @@ public class VoiceController {
 
             System.out.println("############################");
             System.out.println("TWILIO INCOMING CALL");
+            System.out.println("CALL SID = " + callSid);
             System.out.println("FROM = " + from);
             System.out.println("PHONE = " + phone);
             System.out.println("############################");
