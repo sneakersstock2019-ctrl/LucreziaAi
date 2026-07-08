@@ -190,36 +190,120 @@ public class TelefonataDao {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void updateTicketByCallSid(String callSid, Long idTicket) {
 
-	    if (callSid == null || callSid.isBlank() || idTicket == null) {
-	        return;
-	    }
+		if (callSid == null || callSid.isBlank() || idTicket == null) {
+			return;
+		}
+
+		String sql = """
+				UPDATE telefonata
+				SET id_ticket = ?,
+				    esito = ?,
+				    motivo_chiusura = ?
+				WHERE call_sid = ?
+				""";
+
+		try (var conn = dataSource.getConnection();
+				var ps = conn.prepareStatement(sql)) {
+
+			ps.setLong(1, idTicket);
+			ps.setString(2, "TICKET_APERTO");
+			ps.setString(3, "TICKET_APERTO");
+			ps.setString(4, callSid);
+
+			int updated = ps.executeUpdate();
+
+			CallLogger.info(callSid, "TELEFONATA UPDATE TICKET - callSid="
+					+ callSid + " idTicket=" + idTicket + " updated=" + updated);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void updateElevenLabsConversationId(Long idTelefonata,
+			String conversationId,
+			String callSid) {
+
+		if (idTelefonata == null || conversationId == null || conversationId.isBlank()) {
+			return;
+		}
+
+		String sql = """
+				UPDATE telefonata
+				SET elevenlabs_conversation_id = ?
+				WHERE id = ?
+				""";
+
+		try (var conn = dataSource.getConnection();
+				var ps = conn.prepareStatement(sql)) {
+
+			ps.setString(1, conversationId);
+			ps.setLong(2, idTelefonata);
+
+			int updated = ps.executeUpdate();
+
+			CallLogger.info(callSid, "TELEFONATA UPDATE ELEVENLABS CONVERSATION - updated=" + updated);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void updateAudioByConversationId(String conversationId,
+			String audioBase64,
+			String audioUrl) {
+
+		if (conversationId == null || conversationId.isBlank()) {
+			return;
+		}
+
+		String sql = """
+				UPDATE telefonata
+				SET audio_base64 = ?,
+				url_audio = ?
+				WHERE elevenlabs_conversation_id = ?
+				""";
+
+		try (var conn = dataSource.getConnection();
+				var ps = conn.prepareStatement(sql)) {
+
+			ps.setString(1, audioBase64);
+			ps.setString(2, audioUrl);
+			ps.setString(3, conversationId);
+
+			ps.executeUpdate();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public String findAudioBase64ByConversationId(String conversationId) {
 
 	    String sql = """
-	            UPDATE telefonata
-	            SET id_ticket = ?,
-	                esito = ?,
-	                motivo_chiusura = ?
-	            WHERE call_sid = ?
+	            SELECT audio_base64
+	            FROM telefonata
+	            WHERE elevenlabs_conversation_id = ?
 	            """;
 
 	    try (var conn = dataSource.getConnection();
 	         var ps = conn.prepareStatement(sql)) {
 
-	        ps.setLong(1, idTicket);
-	        ps.setString(2, "TICKET_APERTO");
-	        ps.setString(3, "TICKET_APERTO");
-	        ps.setString(4, callSid);
+	        ps.setString(1, conversationId);
 
-	        int updated = ps.executeUpdate();
-
-	        CallLogger.info(callSid, "TELEFONATA UPDATE TICKET - callSid="
-	                + callSid + " idTicket=" + idTicket + " updated=" + updated);
+	        try (var rs = ps.executeQuery()) {
+	            if (rs.next()) {
+	                return rs.getString("audio_base64");
+	            }
+	        }
 
 	    } catch (Exception e) {
 	        e.printStackTrace();
 	    }
+
+	    return null;
 	}
 }
