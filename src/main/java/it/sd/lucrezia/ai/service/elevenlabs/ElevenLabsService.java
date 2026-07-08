@@ -20,7 +20,7 @@ public class ElevenLabsService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public String registerInboundCall(String fromNumber, String toNumber, Utente utente, int ticketAperti) throws Exception {
+    public String registerInboundCall(String fromNumber, String toNumber, String callSid, Long idTelefonata, Utente utente, int ticketAperti) throws Exception {
 
         String url = "https://api.elevenlabs.io/v1/convai/twilio/register-call";
 
@@ -29,6 +29,8 @@ public class ElevenLabsService {
         headers.set("xi-api-key", apiKey);
 
         Map<String, Object> dynamicVariables = Map.of(
+                "call_sid", safe(callSid),
+                "id_telefonata", String.valueOf(idTelefonata),
                 "id_utente", String.valueOf(utente.getId()),
                 "id_condominio", String.valueOf(utente.getIdCondominio()),
                 "nome", safe(utente.getNome()),

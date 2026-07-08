@@ -190,4 +190,36 @@ public class TelefonataDao {
 			e.printStackTrace();
 		}
 	}
+	
+	public void updateTicketByCallSid(String callSid, Long idTicket) {
+
+	    if (callSid == null || callSid.isBlank() || idTicket == null) {
+	        return;
+	    }
+
+	    String sql = """
+	            UPDATE telefonata
+	            SET id_ticket = ?,
+	                esito = ?,
+	                motivo_chiusura = ?
+	            WHERE call_sid = ?
+	            """;
+
+	    try (var conn = dataSource.getConnection();
+	         var ps = conn.prepareStatement(sql)) {
+
+	        ps.setLong(1, idTicket);
+	        ps.setString(2, "TICKET_APERTO");
+	        ps.setString(3, "TICKET_APERTO");
+	        ps.setString(4, callSid);
+
+	        int updated = ps.executeUpdate();
+
+	        CallLogger.info(callSid, "TELEFONATA UPDATE TICKET - callSid="
+	                + callSid + " idTicket=" + idTicket + " updated=" + updated);
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	}
 }

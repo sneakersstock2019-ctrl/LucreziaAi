@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.bean.VoiceContext;
+import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketConversazioneDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
@@ -32,13 +33,14 @@ public class VoiceController {
     private final PhoneUtils phoneUtils;
     private final VoiceCallContextRegistry voiceCallContextRegistry;
     private final ElevenLabsService elevenLabsService;
+    private final TelefonataDao telefonataDao;
 
     @RequestMapping(
             value = "/incoming",
             method = {RequestMethod.GET, RequestMethod.POST},
             produces = "application/xml"
     )
-    public String incomingCall(@RequestParam(value = "From", required = false) String from, @RequestParam(value = "To", required = false) String to) {
+    public String incomingCall(@RequestParam(value = "From", required = false) String from, @RequestParam(value = "To", required = false) String to, @RequestParam(value = "CallSid", required = false) String callSid) {
 
         try {
             String phone = phoneUtils.normalizePhone(from);
@@ -57,11 +59,25 @@ public class VoiceController {
                 );
             }
             
+            Long idTelefonata = telefonataDao.insertTelefonata(
+                    callSid,
+                    phone,
+                    utente.getId(),
+                    utente.getIdCondominio()
+            );
+
             if (phone.equals(elevenLabsBetaPhone)) {
                 System.out.println("ROUTING VOICE ENGINE = ELEVENLABS");
                 int ticketAperti = ticketDao.findOpenTicketsByUtente(utente.getId()).size();
 
-                return elevenLabsService.registerInboundCall(from, to, utente ,ticketAperti);
+                return elevenLabsService.registerInboundCall(
+                        from,
+                        to,
+                        callSid,
+                        idTelefonata,
+                        utente,
+                        ticketAperti
+                );
             }
 
             return buildRealtimeConnectResponse(utente, phone);
@@ -73,6 +89,26 @@ public class VoiceController {
                     "Mi dispiace, al momento Lucrezia non è disponibile. La invitiamo a riprovare più tardi."
             );
         }
+    }
+    
+    @PostMapping("/status")
+    public ResponseEntity<String> callStatus(@RequestParam(value = "CallSid", required = false) String callSid,
+                                             @RequestParam(value = "CallStatus", required = false) String callStatus,
+                                             @RequestParam(value = "CallDuration", required = false) String callDuration) {
+
+        System.out.println("############################");
+        System.out.println("TWILIO CALL STATUS");
+        System.out.println("CALL SID = " + callSid);
+        System.out.println("STATUS = " + callStatus);
+        System.out.println("DURATION = " + callDuration);
+        System.out.println("############################");
+
+        if ("completed".equalsIgnoreCase(callStatus)) {
+            // qui poi chiamiamo il sync ElevenLabs
+            // elevenLabsSyncService.syncByCallSid(callSid);
+        }
+
+        return ResponseEntity.ok("OK");
     }
 
     @PostMapping(value = "/recording-realtime")

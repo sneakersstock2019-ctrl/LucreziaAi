@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.tool.ToolNextAction;
 import it.sd.lucrezia.ai.bean.tool.ToolResult;
+import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +23,7 @@ public class ElevenLabsToolController {
     private static final String CANALE_TELEFONO = "TELEFONO";
 
     private final TicketDao ticketDao;
+    private final TelefonataDao telefonataDao;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -53,6 +55,7 @@ public class ElevenLabsToolController {
 
         Long idUtente = getLong(body, "id_utente");
         Long idCondominio = getLong(body, "id_condominio");
+        String callSid = safeRaw(body.get("call_sid"));
 
         String categoria = safe(body.get("categoria"));
         String priorita = safe(body.get("priorita"));
@@ -91,8 +94,9 @@ public class ElevenLabsToolController {
                 CANALE_TELEFONO,
                 descrizione + " Area: " + area + "."
         );
-
         boolean richiediFoto = shouldRequestPhoto(categoria, descrizione);
+        
+        telefonataDao.updateTicketByCallSid(callSid, ticketId);
 
         return ToolResult.ok(
                 "OK",
@@ -162,5 +166,9 @@ public class ElevenLabsToolController {
         System.out.println("ELEVENLABS TOOL: " + toolName);
         System.out.println("BODY = " + body);
         System.out.println("############################");
+    }
+    
+    private String safeRaw(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 }
