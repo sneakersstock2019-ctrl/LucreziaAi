@@ -4,11 +4,16 @@ import java.util.Base64;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 public class ElevenLabsWebhookController {
 
     private final TelefonataDao telefonataDao;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${app.public-base-url:https://demobotcondomini-production.up.railway.app}")
     private String publicBaseUrl;
