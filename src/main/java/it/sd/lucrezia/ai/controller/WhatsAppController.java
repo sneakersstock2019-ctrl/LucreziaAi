@@ -8,6 +8,7 @@ import it.sd.lucrezia.ai.service.whatsapp.WhatsAppService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequestMapping("/whatsapp")
 @RequiredArgsConstructor
 public class WhatsAppController {
 
