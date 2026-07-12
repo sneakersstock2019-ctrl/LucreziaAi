@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>it.sd.lucrezia.ai</groupId>
 	<artifactId>LucreziaAi</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0</version>
 	<name>LucreziaAi</name>
 	<description>Assistente AI vocale e WhatsApp per la gestione condominiale</description>
 	<url/>

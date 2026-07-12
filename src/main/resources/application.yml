@@ -12,7 +12,7 @@ voice:
 whatsapp:
   token: ${WHATSAPP_TOKEN}
   phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID}
-  verify-token: ${DEMO_WEBHOOK_TOKEN}
+  verify-token: ${WHATSAPP_VERIFY_TOKEN}
   
 spring:
   datasource:
