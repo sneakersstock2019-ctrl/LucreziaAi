@@ -47,7 +47,6 @@ public class ElevenLabsService {
         );
 
         Map<String, Object> body = Map.of(
-                "agent_id", utente.getElevenlabsAgentId(),
                 "from_number", fromNumber,
                 "to_number", toNumber,
                 "direction", "inbound",

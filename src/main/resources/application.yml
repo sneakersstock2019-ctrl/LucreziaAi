@@ -8,6 +8,8 @@ voice:
   elevenlabs:
     api-key: ${ELEVENLABS_API_KEY}
     agent-id: ${ELEVENLABS_AGENT_ID}
+    pre-call-token: ${ELEVENLABS_PRE_CALL_TOKEN}
+    app-public-base-url: https://api.lucreziaai.it
 
 whatsapp:
   token: ${WHATSAPP_TOKEN}

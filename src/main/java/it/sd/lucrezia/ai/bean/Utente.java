@@ -22,7 +22,8 @@ public class Utente {
     private Long idCondominio;
     private String nomeCondominio;
     
-    private String elevenlabsAgentId;
+    private String codiceFiscaleCondominio;
+    private String elevenlabsBranchId;
 
     public String getNomeCompleto() {
         return (nome != null ? nome : "")

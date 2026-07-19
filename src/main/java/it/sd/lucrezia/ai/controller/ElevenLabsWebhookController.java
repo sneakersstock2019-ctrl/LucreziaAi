@@ -1,21 +1,30 @@
 package it.sd.lucrezia.ai.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import it.sd.lucrezia.ai.bean.ElevenLabsPreCallRequest;
+import it.sd.lucrezia.ai.bean.VoiceConversationContext;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
+import it.sd.lucrezia.ai.service.voice.ConversationInitializationService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -24,15 +33,158 @@ import lombok.RequiredArgsConstructor;
 public class ElevenLabsWebhookController {
 
     private final TelefonataDao telefonataDao;
+    private final ConversationInitializationService initializationService;
 
-    @Value("${app.public-base-url:https://demobotcondomini-production.up.railway.app}")
-    private String publicBaseUrl;
+    @Value("${voice.elevenlabs.pre-call-token}")
+    private String preCallToken;
+    
+    @Value("${voice.elevenlabs.app-public-base-url}")
+    private String publicAppBaseUrl;
+
+    @PostMapping("/pre-call")
+    public ResponseEntity<Map<String, Object>> preCall(
+            @RequestHeader(
+                    name = "X-Lucrezia-Token",
+                    required = false
+            )
+            String receivedToken,
+
+            @RequestBody
+            ElevenLabsPreCallRequest request
+    ) {
+
+        if (!tokenMatches(receivedToken)) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "error",
+                            "Unauthorized"
+                    ));
+        }
+
+        try {
+
+            VoiceConversationContext context =
+                    initializationService.initialize(
+                            request.getCallerId(),
+                            request.getCalledNumber(),
+                            request.getCallSid(),
+                            request.getConversationId(),
+                            "SIP"
+                    );
+
+            if (context.branchId() == null
+                    || context.branchId().isBlank()) {
+
+                throw new IllegalStateException(
+                        "Branch ElevenLabs non configurato "
+                                + "per il condominio "
+                                + context.utente()
+                                        .getNomeCondominio()
+                );
+            }
+
+            Map<String, Object> agentOverride =
+                    new LinkedHashMap<>();
+
+            agentOverride.put(
+                    "first_message",
+                    context.firstMessage()
+            );
+
+            Map<String, Object> configOverride =
+                    new LinkedHashMap<>();
+
+            configOverride.put(
+                    "agent",
+                    agentOverride
+            );
+
+            Map<String, Object> response =
+                    new LinkedHashMap<>();
+
+            response.put(
+                    "type",
+                    "conversation_initiation_client_data"
+            );
+
+            response.put(
+                    "user_id",
+                    String.valueOf(
+                            context.utente().getId()
+                    )
+            );
+
+            response.put(
+                    "branch_id",
+                    context.branchId()
+            );
+
+            response.put(
+                    "environment",
+                    "production"
+            );
+
+            response.put(
+                    "dynamic_variables",
+                    context.dynamicVariables()
+            );
+
+            response.put(
+                    "conversation_config_override",
+                    configOverride
+            );
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalStateException e) {
+
+            /*
+             * Non restituiamo un payload incompleto:
+             * ElevenLabs non riuscirebbe comunque ad inizializzare
+             * la conversazione.
+             */
+            return ResponseEntity
+                    .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of(
+                            "error",
+                            e.getMessage()
+                    ));
+
+        } catch (Exception e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error",
+                            "Errore durante l'inizializzazione "
+                                    + "della conversazione"
+                    ));
+        }
+    }
+
+    private boolean tokenMatches(String receivedToken) {
+
+        if (receivedToken == null
+                || preCallToken == null) {
+            return false;
+        }
+
+        return MessageDigest.isEqual(
+        		preCallToken.getBytes(
+                        StandardCharsets.UTF_8
+                ),
+                receivedToken.getBytes(
+                        StandardCharsets.UTF_8
+                )
+        );
+    }
 
     @GetMapping("/post-call")
     public ResponseEntity<String> verify() {
         return ResponseEntity.ok("OK");
     }
-
+    
     @PostMapping("/post-call")
     public ResponseEntity<String> postCall(@RequestBody JsonNode body) {
 
@@ -102,7 +254,7 @@ public class ElevenLabsWebhookController {
             return;
         }
 
-        String audioUrl = publicBaseUrl + "/elevenlabs/webhook/audio/" + conversationId + ".mp3";
+        String audioUrl = publicAppBaseUrl + "/elevenlabs/webhook/audio/" + conversationId + ".mp3";
 
         telefonataDao.updateAudioByConversationId(
                 conversationId,

@@ -213,6 +213,41 @@ public class TicketDao {
 
         return null;
     }
+    
+    public int countTicketApertiByUtente(Long idUtente) {
+
+        String sql = """
+            SELECT COUNT(*)
+            FROM ticket t
+            JOIN stati_ticket st
+              ON st.id = t.id_stato
+            WHERE t.id_utente_apertura = ?
+              AND st.codice NOT IN ('RISOLTO', 'CHIUSO', 'ANNULLATO')
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(1, idUtente);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Errore nel conteggio dei ticket aperti dell'utente "
+                            + idUtente,
+                    e
+            );
+        }
+
+        return 0;
+    }
 
     private void insertStorico(Connection conn,
                                Long idTicket,
