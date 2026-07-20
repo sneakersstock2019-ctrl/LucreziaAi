@@ -1,5 +1,7 @@
 package it.sd.lucrezia.ai.service.voice;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -154,6 +156,17 @@ public class ConversationInitializationService {
         dynamicVariables.put(
                 "branch_condominio",
                 buildBranchName(utente)
+        );
+        
+        dynamicVariables.put(
+                "branch_id",
+                safe(utente.getElevenlabsBranchId())
+        );
+        
+        dynamicVariables.put(
+                "orario_chiamata",
+                LocalDateTime.now()
+                        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         );
 
         CallLogger.info(

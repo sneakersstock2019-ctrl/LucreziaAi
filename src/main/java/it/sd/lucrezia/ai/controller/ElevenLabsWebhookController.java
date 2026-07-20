@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class ElevenLabsWebhookController {
 
     private final TelefonataDao telefonataDao;
-    private final ConversationInitializationService initializationService;
+    private final ConversationInitializationService conversationInitializationService;
 
     @Value("${voice.elevenlabs.pre-call-token}")
     private String preCallToken;
@@ -68,7 +68,7 @@ public class ElevenLabsWebhookController {
         try {
 
             VoiceConversationContext context =
-                    initializationService.initialize(
+                    conversationInitializationService.initialize(
                             request.getCallerId(),
                             request.getCalledNumber(),
                             request.getCallSid(),
