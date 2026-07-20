@@ -39,9 +39,7 @@ public class ConversationInitializationService {
             );
         }
 
-        Utente utente =
-                utenteDao.findCondominoByTelefono(telefono);
-
+        Utente utente = utenteDao.findCondominoByTelefono(telefono);
         if (utente == null) {
             throw new IllegalStateException(
                     "Nessun condomino associato al numero "
@@ -222,15 +220,19 @@ public class ConversationInitializationService {
                 + nomeCondominio;
     }
 
-    private String normalizePhoneNumber(String value) {
+    private String normalizePhoneNumber(String phone) {
 
-        if (value == null) {
+        if (phone == null) {
             return "";
         }
 
-        return value
-                .replaceAll("[^0-9+]", "")
-                .trim();
+        phone = phone.replaceAll("[^0-9]", "");
+
+        if (phone.length() > 10) {
+            phone = phone.substring(phone.length() - 10);
+        }
+
+        return phone;
     }
 
     private String safe(String value) {

@@ -52,7 +52,10 @@ public class ElevenLabsWebhookController {
             @RequestBody
             ElevenLabsPreCallRequest request
     ) {
-
+    	System.out.println("@PostMapping(\"/pre-call\") con i seguenti parametri:");
+    	System.out.println("X-Lucrezia-Token: " + receivedToken);
+    	System.out.println("@RequestBody: " + request);
+    	
         if (!tokenMatches(receivedToken)) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -72,10 +75,9 @@ public class ElevenLabsWebhookController {
                             request.getConversationId(),
                             "SIP"
                     );
+            System.out.println("Recuperato Contesto: " + context);
 
-            if (context.branchId() == null
-                    || context.branchId().isBlank()) {
-
+            if (context.branchId() == null || context.branchId().isBlank()) {
                 throw new IllegalStateException(
                         "Branch ElevenLabs non configurato "
                                 + "per il condominio "
@@ -84,57 +86,47 @@ public class ElevenLabsWebhookController {
                 );
             }
 
-            Map<String, Object> agentOverride =
-                    new LinkedHashMap<>();
-
+            Map<String, Object> agentOverride = new LinkedHashMap<>();
             agentOverride.put(
                     "first_message",
                     context.firstMessage()
             );
 
-            Map<String, Object> configOverride =
-                    new LinkedHashMap<>();
-
+            Map<String, Object> configOverride = new LinkedHashMap<>();
             configOverride.put(
                     "agent",
                     agentOverride
             );
 
-            Map<String, Object> response =
-                    new LinkedHashMap<>();
-
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put(
                     "type",
                     "conversation_initiation_client_data"
             );
-
             response.put(
                     "user_id",
                     String.valueOf(
                             context.utente().getId()
                     )
             );
-
             response.put(
                     "branch_id",
                     context.branchId()
             );
-
             response.put(
                     "environment",
                     "production"
             );
-
             response.put(
                     "dynamic_variables",
                     context.dynamicVariables()
             );
-
             response.put(
                     "conversation_config_override",
                     configOverride
             );
 
+            System.out.println("Response: " + response);
             return ResponseEntity.ok(response);
 
         } catch (IllegalStateException e) {

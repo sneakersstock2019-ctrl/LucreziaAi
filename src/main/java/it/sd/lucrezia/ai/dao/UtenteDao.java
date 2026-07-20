@@ -36,8 +36,7 @@ public class UtenteDao {
               ON muc.id_utente = u.id
             JOIN condomini c
               ON c.id = muc.id_condominio
-            WHERE regexp_replace(u.telefono, '[^0-9+]', '', 'g')
-                  = regexp_replace(?, '[^0-9+]', '', 'g')
+            WHERE RIGHT(regexp_replace(u.telefono,'[^0-9]','','g'),10) = RIGHT(regexp_replace(?,'[^0-9]','','g'),10)
               AND u.ruolo = 'CONDOMINO'
             LIMIT 1
             """;
