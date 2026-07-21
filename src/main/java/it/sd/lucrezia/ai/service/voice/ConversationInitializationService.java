@@ -1,6 +1,7 @@
 package it.sd.lucrezia.ai.service.voice;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -163,10 +164,19 @@ public class ConversationInitializationService {
                 safe(utente.getElevenlabsBranchId())
         );
         
+        LocalDateTime dataOraChiamata =
+                LocalDateTime.now(ZoneId.of("Europe/Rome"));
+
         dynamicVariables.put(
                 "orario_chiamata",
-                LocalDateTime.now()
-                        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                dataOraChiamata.format(
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                )
+        );
+        
+        dynamicVariables.put(
+                "saluto_orario",
+                buildSalutoOrario()
         );
 
         CallLogger.info(
@@ -196,9 +206,10 @@ public class ConversationInitializationService {
     ) {
 
         String nome = safe(utente.getNome());
+        String saluto = buildSalutoOrario();
 
         if (ticketAperti == 1) {
-            return "Ciao " + nome
+            return saluto + " " + nome
                     + ", sono Lucrezia. "
                     + "Vedo che hai una segnalazione aperta. "
                     + "Vuoi conoscerne lo stato oppure "
@@ -206,7 +217,7 @@ public class ConversationInitializationService {
         }
 
         if (ticketAperti > 1) {
-            return "Ciao " + nome
+            return saluto + " " + nome
                     + ", sono Lucrezia. "
                     + "Vedo che hai " + ticketAperti
                     + " segnalazioni aperte. "
@@ -214,10 +225,28 @@ public class ConversationInitializationService {
                     + "oppure aprirne una nuova?";
         }
 
-        return "Ciao " + nome
+        return saluto + " " + nome
                 + ", sono Lucrezia, l'assistente del condominio "
                 + safe(utente.getNomeCondominio())
                 + ". Come posso aiutarti?";
+    }
+    
+    private String buildSalutoOrario() {
+
+        int ora = LocalDateTime.now(
+                ZoneId.of("Europe/Rome")
+        ).getHour();
+
+        /*
+         * Per una telefonata:
+         * - dalle 05:00 alle 17:59 -> Buongiorno
+         * - dalle 18:00 alle 04:59 -> Buonasera
+         */
+        if (ora >= 5 && ora < 18) {
+            return "Buongiorno";
+        }
+
+        return "Buonasera";
     }
 
     private String buildBranchName(Utente utente) {
