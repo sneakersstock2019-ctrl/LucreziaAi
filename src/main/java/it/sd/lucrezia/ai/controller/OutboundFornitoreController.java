@@ -29,23 +29,26 @@ public class OutboundFornitoreController {
     private final OutboundFornitoreService outboundFornitoreService;
 
     @PostMapping
-    public ResponseEntity<AvviaChiamataFornitoreResponse> avviaChiamata(
-            @RequestHeader(
-                    value = "X-Lucrezia-Secret",
-                    required = false
-            ) String receivedSecret,
-            @RequestBody
-            AvviaChiamataFornitoreRequest request) {
+    public ResponseEntity<AvviaChiamataFornitoreResponse>
+            avviaChiamata(
+                    @RequestHeader(
+                            value = "X-Lucrezia-Secret",
+                            required = false
+                    ) String receivedSecret,
+                    @RequestBody
+                    AvviaChiamataFornitoreRequest request) {
 
         validateSecret(receivedSecret);
 
         AvviaChiamataFornitoreResponse response =
-                outboundFornitoreService.avviaChiamata(
+                outboundFornitoreService.accodaChiamata(
                         request.getIdTicket(),
                         request.getIdFornitore()
                 );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity
+                .accepted()
+                .body(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

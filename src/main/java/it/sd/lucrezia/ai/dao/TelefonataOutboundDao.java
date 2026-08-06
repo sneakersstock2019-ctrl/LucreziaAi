@@ -3,13 +3,18 @@ package it.sd.lucrezia.ai.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
 import org.postgresql.util.PGobject;
 import org.springframework.stereotype.Repository;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.lucrezia.ai.bean.TelefonataOutbound;
@@ -237,6 +242,216 @@ public class TelefonataOutboundDao {
                     e
             );
         }
+    }
+    
+    public List<TelefonataOutbound> claimChiamateDaAvviare(
+            int limite) {
+
+        List<TelefonataOutbound> lista = new ArrayList<>();
+
+        String sql = """
+            WITH chiamate_da_prendere AS (
+                SELECT id
+                FROM telefonata_outbound
+                WHERE stato IN (
+                    'DA_AVVIARE',
+                    'RICHIAMATA_PROGRAMMATA'
+                )
+                  AND COALESCE(
+                        data_programmata,
+                        CURRENT_TIMESTAMP
+                      ) <= CURRENT_TIMESTAMP
+                  AND COALESCE(
+                        prossimo_tentativo,
+                        CURRENT_TIMESTAMP
+                      ) <= CURRENT_TIMESTAMP
+                  AND tentativi < massimo_tentativi
+                ORDER BY
+                    COALESCE(
+                        data_programmata,
+                        data_richiesta
+                    ),
+                    id
+                FOR UPDATE SKIP LOCKED
+                LIMIT ?
+            )
+            UPDATE telefonata_outbound t
+            SET stato = 'IN_AVVIO',
+                data_presa_in_carico = CURRENT_TIMESTAMP,
+                tentativi = tentativi + 1,
+                data_aggiornamento = CURRENT_TIMESTAMP
+            FROM chiamate_da_prendere c
+            WHERE t.id = c.id
+            RETURNING
+                t.id,
+                t.tipo_chiamata,
+                t.id_ticket,
+                t.id_fornitore,
+                t.id_condominio,
+                t.id_telefonata_precedente,
+                t.telefono_destinatario,
+                t.nominativo_destinatario,
+                t.agent_id,
+                t.agent_phone_number_id,
+                t.stato,
+                t.data_programmata,
+                t.tentativi,
+                t.massimo_tentativi,
+                t.dynamic_variables
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setInt(1, limite);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+
+                    TelefonataOutbound t =
+                            new TelefonataOutbound();
+
+                    t.setId(rs.getLong("id"));
+                    t.setTipoChiamata(
+                            rs.getString("tipo_chiamata")
+                    );
+
+                    t.setIdTicket(
+                            getNullableLong(rs, "id_ticket")
+                    );
+
+                    t.setIdFornitore(
+                            getNullableLong(rs, "id_fornitore")
+                    );
+
+                    t.setIdCondominio(
+                            getNullableLong(rs, "id_condominio")
+                    );
+
+                    t.setIdTelefonataPrecedente(
+                            getNullableLong(
+                                    rs,
+                                    "id_telefonata_precedente"
+                            )
+                    );
+
+                    t.setTelefonoDestinatario(
+                            rs.getString("telefono_destinatario")
+                    );
+
+                    t.setNominativoDestinatario(
+                            rs.getString("nominativo_destinatario")
+                    );
+
+                    t.setAgentId(rs.getString("agent_id"));
+
+                    t.setAgentPhoneNumberId(
+                            rs.getString(
+                                    "agent_phone_number_id"
+                            )
+                    );
+
+                    t.setStato(rs.getString("stato"));
+                    t.setTentativi(rs.getInt("tentativi"));
+
+                    t.setMassimoTentativi(
+                            rs.getInt("massimo_tentativi")
+                    );
+
+                    Timestamp programmata =
+                            rs.getTimestamp("data_programmata");
+
+                    if (programmata != null) {
+                        t.setDataProgrammata(
+                                programmata.toLocalDateTime()
+                        );
+                    }
+
+                    String json =
+                            rs.getString("dynamic_variables");
+
+                    if (json != null && !json.isBlank()) {
+                        t.setDynamicVariables(
+                                objectMapper.readValue(
+                                        json,
+                                        new TypeReference<
+                                                Map<String, Object>
+                                        >() {}
+                                )
+                        );
+                    }
+
+                    lista.add(t);
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore claim chiamate outbound",
+                    e
+            );
+        }
+
+        return lista;
+    }
+    
+    public void programmaRetry(
+            Long id,
+            String errore,
+            int minutiAttesa) {
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET stato = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN 'FALLITA'
+                    ELSE 'DA_AVVIARE'
+                END,
+                errore = ?,
+                prossimo_tentativo = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN NULL
+                    ELSE CURRENT_TIMESTAMP
+                         + (? * INTERVAL '1 minute')
+                END,
+                data_fine = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN CURRENT_TIMESTAMP
+                    ELSE NULL
+                END,
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, truncate(errore, 10000));
+            ps.setInt(2, minutiAttesa);
+            ps.setLong(3, id);
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore programmazione retry outbound " + id,
+                    e
+            );
+        }
+    }
+    
+    private Long getNullableLong(
+            ResultSet rs,
+            String columnName) throws SQLException {
+
+        Object value = rs.getObject(columnName);
+
+        return value != null
+                ? rs.getLong(columnName)
+                : null;
     }
 
     private PGobject toJsonb(Object value) throws Exception {

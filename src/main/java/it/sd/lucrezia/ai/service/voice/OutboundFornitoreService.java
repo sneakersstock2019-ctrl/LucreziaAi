@@ -1,6 +1,5 @@
 package it.sd.lucrezia.ai.service.voice;
 
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -9,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import it.sd.lucrezia.ai.bean.AvviaChiamataFornitoreResponse;
-import it.sd.lucrezia.ai.bean.ElevenLabsSipCallResult;
 import it.sd.lucrezia.ai.bean.TelefonataOutbound;
 import it.sd.lucrezia.ai.bean.TicketFornitoreCallData;
 import it.sd.lucrezia.ai.dao.OutboundTicketDao;
@@ -29,7 +27,7 @@ public class OutboundFornitoreService {
     private String dashboardBaseUrl;
 
     @Transactional
-    public AvviaChiamataFornitoreResponse avviaChiamata(
+    public AvviaChiamataFornitoreResponse accodaChiamata(
             Long idTicket,
             Long idFornitore) {
 
@@ -43,91 +41,19 @@ public class OutboundFornitoreService {
 
         if (dati == null) {
             throw new IllegalArgumentException(
-                    "Ticket o fornitore non trovato, oppure "
-                            + "il ticket non risulta assegnato "
-                            + "al fornitore indicato"
+                    "Ticket o fornitore non trovato oppure "
+                    + "ticket non assegnato al fornitore indicato"
             );
         }
 
-        dati.setDashboardUrl(
-                buildDashboardUrl(idTicket)
-        );
+        dati.setDashboardUrl(buildDashboardUrl(idTicket));
 
         Map<String, Object> dynamicVariables =
                 buildDynamicVariables(dati);
 
-        TelefonataOutbound telefonata =
-                buildTelefonataOutbound(
-                        dati,
-                        dynamicVariables
-                );
+        TelefonataOutbound telefonata = new TelefonataOutbound();
 
-        Long idTelefonata =
-                telefonataOutboundDao.insert(telefonata);
-
-        /*
-         * Inseriamo anche l'ID interno fra le dynamic variables.
-         * È il riferimento che useranno tool e webhook.
-         */
-        dynamicVariables.put(
-                "telefonata_outbound_id",
-                idTelefonata
-        );
-
-        /*
-         * Il record è già stato inserito, ma la mappa JSON salvata
-         * non contiene ancora telefonata_outbound_id.
-         * Aggiungiamo un metodo dedicato nel DAO.
-         */
-        telefonataOutboundDao.updateDynamicVariables(
-                idTelefonata,
-                dynamicVariables
-        );
-
-        try {
-            ElevenLabsSipCallResult result =
-                    elevenLabsService.avviaChiamata(
-                            dati.getTelefonoFornitore(),
-                            "fornitore-" + dati.getIdFornitore(),
-                            dynamicVariables
-                    );
-
-            telefonataOutboundDao.updateAvviata(
-                    idTelefonata,
-                    result.getConversationId(),
-                    result.getSipCallId()
-            );
-
-            return new AvviaChiamataFornitoreResponse(
-                    true,
-                    idTelefonata,
-                    result.getConversationId(),
-                    result.getSipCallId(),
-                    result.getMessage()
-            );
-
-        } catch (Exception e) {
-
-            telefonataOutboundDao.updateErrore(
-                    idTelefonata,
-                    e.getMessage()
-            );
-
-            throw e;
-        }
-    }
-
-    private TelefonataOutbound buildTelefonataOutbound(
-            TicketFornitoreCallData dati,
-            Map<String, Object> dynamicVariables) {
-
-        TelefonataOutbound telefonata =
-                new TelefonataOutbound();
-
-        telefonata.setTipoChiamata(
-                "ASSEGNAZIONE_FORNITORE"
-        );
-
+        telefonata.setTipoChiamata("ASSEGNAZIONE_FORNITORE");
         telefonata.setIdTicket(dati.getIdTicket());
         telefonata.setIdFornitore(dati.getIdFornitore());
         telefonata.setIdCondominio(dati.getIdCondominio());
@@ -145,15 +71,34 @@ public class OutboundFornitoreService {
         );
 
         telefonata.setAgentPhoneNumberId(
-                elevenLabsService
-                        .getAgentPhoneNumberId()
+                elevenLabsService.getAgentPhoneNumberId()
         );
 
-        telefonata.setStato("IN_AVVIO");
-        telefonata.setDataAvvio(LocalDateTime.now());
+        telefonata.setStato("DA_AVVIARE");
+        telefonata.setTentativi(0);
+        telefonata.setMassimoTentativi(3);
         telefonata.setDynamicVariables(dynamicVariables);
 
-        return telefonata;
+        Long idTelefonata =
+                telefonataOutboundDao.insert(telefonata);
+
+        dynamicVariables.put(
+                "telefonata_outbound_id",
+                idTelefonata
+        );
+
+        telefonataOutboundDao.updateDynamicVariables(
+                idTelefonata,
+                dynamicVariables
+        );
+
+        return new AvviaChiamataFornitoreResponse(
+                true,
+                idTelefonata,
+                null,
+                null,
+                "Chiamata accodata correttamente"
+        );
     }
 
     private Map<String, Object> buildDynamicVariables(
@@ -168,10 +113,7 @@ public class OutboundFornitoreService {
         );
 
         variables.put("ticket_id", dati.getIdTicket());
-        variables.put(
-                "fornitore_id",
-                dati.getIdFornitore()
-        );
+        variables.put("fornitore_id", dati.getIdFornitore());
 
         variables.put(
                 "nome_fornitore",
@@ -230,7 +172,7 @@ public class OutboundFornitoreService {
 
         String base = dashboardBaseUrl;
 
-        if (base.endsWith("/")) {
+        while (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
 
@@ -257,7 +199,6 @@ public class OutboundFornitoreService {
     }
 
     private String safe(String value) {
-
         return value == null || value.isBlank()
                 ? "-"
                 : value.trim();

@@ -44,6 +44,12 @@ public class TelefonataOutbound {
 
     private Integer numeroTool;
     private Integer numeroInterruzioni;
+    
+    private Integer tentativi;
+    private Integer massimoTentativi;
+
+    private LocalDateTime prossimoTentativo;
+    private LocalDateTime dataPresaInCarico;
 
     private String errore;
 
