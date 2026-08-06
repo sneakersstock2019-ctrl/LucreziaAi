@@ -9,4 +9,6 @@ public final class ToolNextAction {
     public static final String SEND_WHATSAPP_PHOTO = "SEND_WHATSAPP_PHOTO";
     public static final String END_CALL = "END_CALL";
     public static final String NONE = "NONE";
+    
+    public static final String CONFIRM_APPOINTMENT = "CONFIRM_APPOINTMENT";
 }

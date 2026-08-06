@@ -1,5 +1,8 @@
 package it.sd.lucrezia.ai.controller;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -11,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
 import it.sd.lucrezia.ai.bean.ToolResult;
+import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +28,7 @@ public class ElevenLabsToolController {
 
     private final TicketDao ticketDao;
     private final TelefonataDao telefonataDao;
+    private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -137,6 +142,106 @@ public class ElevenLabsToolController {
                 ToolNextAction.END_CALL,
                 Map.of(
                         "id_telefonata", idTelefonata
+                )
+        );
+    }
+    
+    @PostMapping("/scheduleIntervention")
+    public ToolResult<Map<String, Object>> scheduleIntervention(
+            @RequestBody Map<String, Object> body) {
+
+        logTool("scheduleIntervention", body);
+
+        Long idTelefonataOutbound =
+                getLong(body, "telefonata_outbound_id");
+
+        String dataInterventoRaw =
+                safeRaw(body.get("data_intervento"));
+
+        String nota =
+                safeRaw(body.get("nota"));
+
+        if (idTelefonataOutbound == null) {
+            return missingField("telefonata_outbound_id");
+        }
+
+        if (dataInterventoRaw.isBlank()) {
+            return missingField("data_intervento");
+        }
+
+        LocalDateTime dataIntervento;
+
+        try {
+            dataIntervento =
+                    LocalDateTime.parse(dataInterventoRaw);
+
+        } catch (DateTimeParseException e) {
+
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field", "data_intervento",
+                            "expected_format",
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            "received_value",
+                            dataInterventoRaw
+                    )
+            );
+        }
+
+        if (dataIntervento.isBefore(LocalDateTime.now())) {
+
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field", "data_intervento",
+                            "reason",
+                            "La data dell'intervento è nel passato"
+                    )
+            );
+        }
+
+        boolean aggiornato =
+                fornitoreOutboundToolDao.programmaIntervento(
+                        idTelefonataOutbound,
+                        dataIntervento,
+                        nota
+                );
+
+        if (!aggiornato) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "telefonata_outbound_id",
+                            idTelefonataOutbound,
+                            "reason",
+                            "Telefonata outbound non trovata"
+                    )
+            );
+        }
+
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern(
+                        "dd/MM/yyyy 'alle' HH:mm"
+                );
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.CONFIRM_APPOINTMENT,
+                Map.of(
+                        "telefonata_outbound_id",
+                        idTelefonataOutbound,
+                        "data_intervento",
+                        dataIntervento.toString(),
+                        "data_intervento_formattata",
+                        dataIntervento.format(formatter),
+                        "nota",
+                        nota,
+                        "esito",
+                        "INTERVENTO_PROGRAMMATO"
                 )
         );
     }
