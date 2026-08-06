@@ -27,36 +27,6 @@ public class TelefonataOutboundDao {
     private final DataSource dataSource;
     private final ObjectMapper objectMapper;
     
-    public void logDatabaseTime() {
-
-        String sql = """
-            SELECT
-                CURRENT_TIMESTAMP AS ora_database,
-                CURRENT_SETTING('TimeZone') AS timezone_database
-        """;
-
-        try (
-                Connection conn = dataSource.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()
-        ) {
-            if (rs.next()) {
-                System.out.println(
-                        "ORA DB DAL JOB = "
-                                + rs.getString("ora_database")
-                );
-
-                System.out.println(
-                        "TIMEZONE DB DAL JOB = "
-                                + rs.getString("timezone_database")
-                );
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public Long insert(TelefonataOutbound telefonata) {
 
         String sql = """

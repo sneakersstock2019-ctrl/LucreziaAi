@@ -562,6 +562,92 @@ public class FornitoreOutboundToolDao {
         }
     }
     
+    public boolean selezionaGestioneDigitale(
+            Long idTelefonataOutbound,
+            String canale) {
+
+        String esito = switch (canale.toUpperCase()) {
+            case "WHATSAPP" -> "GESTIONE_WHATSAPP";
+            case "DASHBOARD" -> "GESTIONE_DASHBOARD";
+            default -> throw new IllegalArgumentException(
+                    "Canale digitale non valido: " + canale
+            );
+        };
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET esito = ?,
+                motivo_chiusura = ?,
+                errore = NULL,
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, esito);
+            ps.setString(2, canale.toUpperCase());
+            ps.setLong(3, idTelefonataOutbound);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore selezione gestione digitale per telefonata "
+                            + idTelefonataOutbound,
+                    e
+            );
+        }
+    }
+    
+    public boolean chiudiTelefonataOutbound(
+            Long idTelefonataOutbound,
+            String motivoChiusura) {
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET stato = 'COMPLETATA',
+                esito = COALESCE(esito, 'NESSUNA_DECISIONE'),
+                motivo_chiusura = CASE
+                    WHEN motivo_chiusura IS NOT NULL
+                         AND motivo_chiusura <> ''
+                        THEN motivo_chiusura
+                    ELSE ?
+                END,
+                data_fine = COALESCE(
+                    data_fine,
+                    CURRENT_TIMESTAMP
+                ),
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(
+                    1,
+                    motivoChiusura == null || motivoChiusura.isBlank()
+                            ? "CHIUSURA_LUCREZIA"
+                            : motivoChiusura
+            );
+
+            ps.setLong(2, idTelefonataOutbound);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore chiusura telefonata outbound "
+                            + idTelefonataOutbound,
+                    e
+            );
+        }
+    }
+    
     private void setNullableLong(
             PreparedStatement ps,
             int index,

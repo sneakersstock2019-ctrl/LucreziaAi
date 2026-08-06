@@ -403,6 +403,121 @@ public class ElevenLabsToolController {
                 )
         );
     }
+    
+    @PostMapping("/manageDigitalChannel")
+    public ToolResult<Map<String, Object>> manageDigitalChannel(
+            @RequestBody Map<String, Object> body) {
+
+        logTool("manageDigitalChannel", body);
+
+        Long idTelefonataOutbound =
+                getLong(body, "telefonata_outbound_id");
+
+        String canale =
+                safeRaw(body.get("canale")).toUpperCase();
+
+        if (idTelefonataOutbound == null) {
+            return missingField("telefonata_outbound_id");
+        }
+
+        if (canale.isBlank()) {
+            return missingField("canale");
+        }
+
+        if (!"WHATSAPP".equals(canale)
+                && !"DASHBOARD".equals(canale)) {
+
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field", "canale",
+                            "allowed_values",
+                            List.of("WHATSAPP", "DASHBOARD"),
+                            "received_value", canale
+                    )
+            );
+        }
+
+        boolean aggiornato =
+                fornitoreOutboundToolDao.selezionaGestioneDigitale(
+                        idTelefonataOutbound,
+                        canale
+                );
+
+        if (!aggiornato) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "telefonata_outbound_id",
+                            idTelefonataOutbound,
+                            "reason",
+                            "Telefonata outbound non trovata"
+                    )
+            );
+        }
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.DIGITAL_MANAGEMENT_SELECTED,
+                Map.of(
+                        "telefonata_outbound_id",
+                        idTelefonataOutbound,
+                        "canale", canale,
+                        "esito",
+                        "WHATSAPP".equals(canale)
+                                ? "GESTIONE_WHATSAPP"
+                                : "GESTIONE_DASHBOARD"
+                )
+        );
+    }
+    
+    @PostMapping("/closeOutboundCall")
+    public ToolResult<Map<String, Object>> closeOutboundCall(
+            @RequestBody Map<String, Object> body) {
+
+        logTool("closeOutboundCall", body);
+
+        Long idTelefonataOutbound =
+                getLong(body, "telefonata_outbound_id");
+
+        String motivoChiusura =
+                safeRaw(body.get("motivo_chiusura"));
+
+        if (idTelefonataOutbound == null) {
+            return missingField("telefonata_outbound_id");
+        }
+
+        boolean aggiornata =
+                fornitoreOutboundToolDao.chiudiTelefonataOutbound(
+                        idTelefonataOutbound,
+                        motivoChiusura
+                );
+
+        if (!aggiornata) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "telefonata_outbound_id",
+                            idTelefonataOutbound,
+                            "reason",
+                            "Telefonata outbound non trovata"
+                    )
+            );
+        }
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.OUTBOUND_CALL_CLOSED,
+                Map.of(
+                        "telefonata_outbound_id",
+                        idTelefonataOutbound,
+                        "stato", "COMPLETATA"
+                )
+        );
+    }
 
     private ToolResult<Map<String, Object>> missingField(String field) {
         return ToolResult.error(

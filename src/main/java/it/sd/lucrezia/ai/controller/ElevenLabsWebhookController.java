@@ -179,7 +179,7 @@ public class ElevenLabsWebhookController {
     
     @PostMapping("/post-call")
     public ResponseEntity<String> postCall(@RequestBody JsonNode body) {
-
+    	System.out.println(body.toPrettyString());
         String type = body.path("type").asText();
 
         try {
@@ -190,6 +190,9 @@ public class ElevenLabsWebhookController {
             if ("post_call_audio".equals(type)) {
                 handleAudio(body);
             }
+            if ("call_initiation_failure".equals(type)) {
+                handleCallFailure(body);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -198,6 +201,29 @@ public class ElevenLabsWebhookController {
         return ResponseEntity.ok("OK");
     }
 
+    private void handleCallFailure(JsonNode body) {
+
+        JsonNode data = body.path("data");
+
+        String conversationId =
+                data.path("conversation_id").asText();
+
+        String reason =
+                data.path("reason").asText("UNKNOWN");
+
+        System.out.println(
+                "ELEVENLABS CALL FAILURE "
+                        + conversationId
+                        + " reason="
+                        + reason
+        );
+
+//        telefonataOutboundDao.gestisciMancataRisposta(
+//                conversationId,
+//                reason
+//        );
+    }
+    
     private void handleTranscription(JsonNode body) throws Exception {
 
         JsonNode data = body.path("data");
