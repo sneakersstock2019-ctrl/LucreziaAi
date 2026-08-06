@@ -12,5 +12,6 @@ public final class ToolNextAction {
     
     public static final String CONFIRM_APPOINTMENT = "CONFIRM_APPOINTMENT";
     public static final String ASSIGNMENT_REJECTED = "ASSIGNMENT_REJECTED";
+    public static final String CALLBACK_SCHEDULED = "CALLBACK_SCHEDULED";
     
 }

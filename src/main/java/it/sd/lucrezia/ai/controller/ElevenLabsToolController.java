@@ -299,6 +299,110 @@ public class ElevenLabsToolController {
                 )
         );
     }
+    
+    @PostMapping("/scheduleCallback")
+    public ToolResult<Map<String, Object>> scheduleCallback(
+            @RequestBody Map<String, Object> body) {
+
+        logTool("scheduleCallback", body);
+
+        Long idTelefonataOutbound =
+                getLong(body, "telefonata_outbound_id");
+
+        String dataRichiamataRaw =
+                safeRaw(body.get("data_richiamata"));
+
+        String nota =
+                safeRaw(body.get("nota"));
+
+        if (idTelefonataOutbound == null) {
+            return missingField("telefonata_outbound_id");
+        }
+
+        if (dataRichiamataRaw.isBlank()) {
+            return missingField("data_richiamata");
+        }
+
+        LocalDateTime dataRichiamata;
+
+        try {
+            dataRichiamata =
+                    LocalDateTime.parse(dataRichiamataRaw);
+
+        } catch (DateTimeParseException e) {
+
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field", "data_richiamata",
+                            "expected_format",
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            "received_value",
+                            dataRichiamataRaw
+                    )
+            );
+        }
+
+        if (dataRichiamata.isBefore(
+                LocalDateTime.now().plusMinutes(1))) {
+
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field", "data_richiamata",
+                            "reason",
+                            "La richiamata deve essere programmata "
+                                    + "nel futuro"
+                    )
+            );
+        }
+
+        Long idRichiamata =
+                fornitoreOutboundToolDao.programmaRichiamata(
+                        idTelefonataOutbound,
+                        dataRichiamata,
+                        nota
+                );
+
+        if (idRichiamata == null) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "telefonata_outbound_id",
+                            idTelefonataOutbound,
+                            "reason",
+                            "Telefonata outbound non trovata"
+                    )
+            );
+        }
+
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern(
+                        "dd/MM/yyyy 'alle' HH:mm"
+                );
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.CALLBACK_SCHEDULED,
+                Map.of(
+                        "telefonata_outbound_id",
+                        idTelefonataOutbound,
+                        "richiamata_outbound_id",
+                        idRichiamata,
+                        "data_richiamata",
+                        dataRichiamata.toString(),
+                        "data_richiamata_formattata",
+                        dataRichiamata.format(formatter),
+                        "nota",
+                        nota,
+                        "esito",
+                        "RICHIAMATA_RICHIESTA"
+                )
+        );
+    }
 
     private ToolResult<Map<String, Object>> missingField(String field) {
         return ToolResult.error(
