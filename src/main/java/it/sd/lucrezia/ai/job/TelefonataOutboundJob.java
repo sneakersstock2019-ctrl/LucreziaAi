@@ -25,6 +25,7 @@ public class TelefonataOutboundJob {
     )
     public void processaChiamateOutbound() {
     	System.out.println("Avvio Job Chiamata Fornitore");
+    	telefonataOutboundDao.logDatabaseTime();
         List<TelefonataOutbound> chiamate;
 
         try {
