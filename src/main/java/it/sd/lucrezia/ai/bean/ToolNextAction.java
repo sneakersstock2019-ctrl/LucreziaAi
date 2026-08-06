@@ -15,5 +15,5 @@ public final class ToolNextAction {
     public static final String CALLBACK_SCHEDULED = "CALLBACK_SCHEDULED";
     public static final String DIGITAL_MANAGEMENT_SELECTED = "DIGITAL_MANAGEMENT_SELECTED";
     public static final String OUTBOUND_CALL_CLOSED = "OUTBOUND_CALL_CLOSED";
-    
+    public static final String OUTBOUND_RETRY_SCHEDULED = "OUTBOUND_RETRY_SCHEDULED";
 }

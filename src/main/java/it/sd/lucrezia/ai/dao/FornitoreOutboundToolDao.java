@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.sd.lucrezia.ai.bean.RetryOutboundResult;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -642,6 +643,105 @@ public class FornitoreOutboundToolDao {
         } catch (Exception e) {
             throw new RuntimeException(
                     "Errore chiusura telefonata outbound "
+                            + idTelefonataOutbound,
+                    e
+            );
+        }
+    }
+    
+    public RetryOutboundResult programmaRetryMancataRisposta(
+            Long idTelefonataOutbound,
+            String motivo) {
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET stato = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN 'FALLITA'
+                    ELSE 'DA_AVVIARE'
+                END,
+
+                esito = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN 'FORNITORE_NON_RAGGIUNTO'
+                    ELSE 'TENTATIVO_NON_RIUSCITO'
+                END,
+
+                motivo_chiusura = ?,
+
+                prossimo_tentativo = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN NULL
+                    WHEN tentativi = 1
+                        THEN CURRENT_TIMESTAMP + INTERVAL '1 minutes'
+                    WHEN tentativi = 2
+                        THEN CURRENT_TIMESTAMP + INTERVAL '5 minutes'
+                    ELSE CURRENT_TIMESTAMP + INTERVAL '180 minutes'
+                END,
+
+                data_presa_in_carico = NULL,
+
+                data_fine = CASE
+                    WHEN tentativi >= massimo_tentativi
+                        THEN CURRENT_TIMESTAMP
+                    ELSE NULL
+                END,
+
+                errore = NULL,
+                data_aggiornamento = CURRENT_TIMESTAMP
+
+            WHERE id = ?
+
+            RETURNING
+                stato,
+                tentativi,
+                massimo_tentativi,
+                prossimo_tentativo
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(
+                    1,
+                    motivo == null || motivo.isBlank()
+                            ? "Fornitore non raggiunto"
+                            : motivo
+            );
+
+            ps.setLong(2, idTelefonataOutbound);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return null;
+                }
+
+                RetryOutboundResult result =
+                        new RetryOutboundResult();
+
+                result.setStato(rs.getString("stato"));
+                result.setTentativi(rs.getInt("tentativi"));
+                result.setMassimoTentativi(
+                        rs.getInt("massimo_tentativi")
+                );
+
+                Timestamp prossimoTentativo =
+                        rs.getTimestamp("prossimo_tentativo");
+
+                if (prossimoTentativo != null) {
+                    result.setProssimoTentativo(
+                            prossimoTentativo.toLocalDateTime()
+                    );
+                }
+
+                return result;
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore programmazione retry della telefonata "
                             + idTelefonataOutbound,
                     e
             );

@@ -3,6 +3,7 @@ package it.sd.lucrezia.ai.controller;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import it.sd.lucrezia.ai.bean.RetryOutboundResult;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
 import it.sd.lucrezia.ai.bean.ToolResult;
@@ -482,6 +484,10 @@ public class ElevenLabsToolController {
         Long idTelefonataOutbound =
                 getLong(body, "telefonata_outbound_id");
 
+        String esitoChiamata =
+                safeRaw(body.get("esito_chiamata"))
+                        .toUpperCase();
+
         String motivoChiusura =
                 safeRaw(body.get("motivo_chiusura"));
 
@@ -489,11 +495,93 @@ public class ElevenLabsToolController {
             return missingField("telefonata_outbound_id");
         }
 
-        boolean aggiornata =
-                fornitoreOutboundToolDao.chiudiTelefonataOutbound(
-                        idTelefonataOutbound,
-                        motivoChiusura
+        if (esitoChiamata.isBlank()) {
+            return missingField("esito_chiamata");
+        }
+
+        if ("SEGRETERIA".equals(esitoChiamata)
+                || "MANCATA_RISPOSTA".equals(esitoChiamata)) {
+
+            RetryOutboundResult retry =
+                    fornitoreOutboundToolDao
+                            .programmaRetryMancataRisposta(
+                                    idTelefonataOutbound,
+                                    motivoChiusura
+                            );
+
+            if (retry == null) {
+                return ToolResult.error(
+                        "KO",
+                        ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                        Map.of(
+                                "telefonata_outbound_id",
+                                idTelefonataOutbound,
+                                "reason",
+                                "Telefonata outbound non trovata"
+                        )
                 );
+            }
+
+            Map<String, Object> result =
+                    new LinkedHashMap<>();
+
+            result.put(
+                    "telefonata_outbound_id",
+                    idTelefonataOutbound
+            );
+
+            result.put("stato", retry.getStato());
+            result.put("tentativi", retry.getTentativi());
+
+            result.put(
+                    "massimo_tentativi",
+                    retry.getMassimoTentativi()
+            );
+
+            result.put(
+                    "prossimo_tentativo",
+                    retry.getProssimoTentativo()
+            );
+
+            result.put(
+                    "retry_programmato",
+                    retry.getProssimoTentativo() != null
+            );
+
+            return ToolResult.ok(
+                    "OK",
+                    retry.getProssimoTentativo() != null
+                            ? ToolNextAction.OUTBOUND_RETRY_SCHEDULED
+                            : ToolNextAction.OUTBOUND_CALL_CLOSED,
+                    result
+            );
+        }
+
+        if (!"COMPLETATA".equals(esitoChiamata)) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "invalid_field",
+                            "esito_chiamata",
+                            "allowed_values",
+                            List.of(
+                                    "COMPLETATA",
+                                    "SEGRETERIA",
+                                    "MANCATA_RISPOSTA"
+                            ),
+                            "received_value",
+                            esitoChiamata
+                    )
+            );
+        }
+
+        boolean aggiornata =
+                fornitoreOutboundToolDao
+                        .chiudiTelefonataOutbound(
+                                idTelefonataOutbound,
+                                motivoChiusura
+                        );
 
         if (!aggiornata) {
             return ToolResult.error(
@@ -514,7 +602,8 @@ public class ElevenLabsToolController {
                 Map.of(
                         "telefonata_outbound_id",
                         idTelefonataOutbound,
-                        "stato", "COMPLETATA"
+                        "stato",
+                        "COMPLETATA"
                 )
         );
     }
