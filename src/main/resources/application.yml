@@ -18,18 +18,17 @@ whatsapp:
   phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID}
   verify-token: ${WHATSAPP_VERIFY_TOKEN}
   
-  spring:
-    datasource:
-      url: jdbc:postgresql://postgres.railway.internal:5432/railway?sslmode=require
-      username: ${DB_USERNAME}
-      password: ${DB_PASSWORD}
-      driver-class-name: org.postgresql.Driver
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres.railway.internal:5432/railway?sslmode=require
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-init-sql: "SET TIME ZONE 'Europe/Rome'"
 
-      hikari:
-        connection-init-sql: SET TIME ZONE 'Europe/Rome'
-
-    jackson:
-      time-zone: Europe/Rome
+  jackson:
+    time-zone: Europe/Rome
 
 lucrezia:
   api-public-base-url: https://api.lucreziaai.it
