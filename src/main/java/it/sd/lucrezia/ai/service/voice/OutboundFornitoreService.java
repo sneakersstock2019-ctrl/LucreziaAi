@@ -25,7 +25,7 @@ public class OutboundFornitoreService {
     private final TelefonataOutboundDao telefonataOutboundDao;
     private final ElevenLabsService elevenLabsService;
 
-    @Value("${voice.elevenlabs.dashboard-public-base-url}")
+    @Value("${lucrezia.dashboard-public-base-url}")
     private String dashboardBaseUrl;
 
     @Transactional

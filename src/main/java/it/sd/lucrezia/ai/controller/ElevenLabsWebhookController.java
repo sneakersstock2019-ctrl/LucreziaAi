@@ -38,8 +38,8 @@ public class ElevenLabsWebhookController {
     @Value("${voice.elevenlabs.pre-call-token}")
     private String preCallToken;
     
-    @Value("${voice.elevenlabs.app-public-base-url}")
-    private String publicAppBaseUrl;
+    @Value("${lucrezia.api-public-base-url}")
+    private String publicApiBaseUrl;
 
     @PostMapping("/pre-call")
     public ResponseEntity<Map<String, Object>> preCall(
@@ -246,7 +246,7 @@ public class ElevenLabsWebhookController {
             return;
         }
 
-        String audioUrl = publicAppBaseUrl + "/elevenlabs/webhook/audio/" + conversationId + ".mp3";
+        String audioUrl = publicApiBaseUrl + "/elevenlabs/webhook/audio/" + conversationId + ".mp3";
 
         telefonataDao.updateAudioByConversationId(
                 conversationId,

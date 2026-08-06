@@ -1,11 +1,15 @@
 package it.sd.lucrezia.ai.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,14 +23,21 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/outbound/fornitore")
 public class OutboundFornitoreController {
 
-    private final OutboundFornitoreService
-            outboundFornitoreService;
+	@Value("${lucrezia.api-public-secret}")
+	private String apiSecret;
+	
+    private final OutboundFornitoreService outboundFornitoreService;
 
     @PostMapping
-    public ResponseEntity<AvviaChiamataFornitoreResponse>
-            avviaChiamata(
-                    @RequestBody
-                    AvviaChiamataFornitoreRequest request) {
+    public ResponseEntity<AvviaChiamataFornitoreResponse> avviaChiamata(
+            @RequestHeader(
+                    value = "X-Lucrezia-Secret",
+                    required = false
+            ) String receivedSecret,
+            @RequestBody
+            AvviaChiamataFornitoreRequest request) {
+
+        validateSecret(receivedSecret);
 
         AvviaChiamataFornitoreResponse response =
                 outboundFornitoreService.avviaChiamata(
@@ -63,5 +74,40 @@ public class OutboundFornitoreController {
                         "Errore durante l'avvio della chiamata"
                 )
         );
+    }
+    
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(
+            SecurityException e) {
+
+        return ResponseEntity.status(401).body(
+                Map.of(
+                        "success", false,
+                        "message", e.getMessage()
+                )
+        );
+    }
+    
+    private void validateSecret(String receivedSecret) {
+
+        if (receivedSecret == null
+                || apiSecret == null
+                || apiSecret.isBlank()) {
+
+            throw new SecurityException(
+                    "Chiamata non autorizzata"
+            );
+        }
+
+        boolean valid = MessageDigest.isEqual(
+                apiSecret.getBytes(StandardCharsets.UTF_8),
+                receivedSecret.getBytes(StandardCharsets.UTF_8)
+        );
+
+        if (!valid) {
+            throw new SecurityException(
+                    "Chiamata non autorizzata"
+            );
+        }
     }
 }
