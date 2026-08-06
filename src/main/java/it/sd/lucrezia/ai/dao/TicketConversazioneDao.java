@@ -15,21 +15,14 @@ public class TicketConversazioneDao {
 
     private final DataSource dataSource;
 
-    public void insertConversazione(Long idTicket,
-                                    String canale,
-                                    String tipo,
-                                    String contenuto,
-                                    String urlAudio) {
+    public void insertConversazione(Long idTicket, String contenuto) {
 
         String sql = """
-            INSERT INTO ticket_conversazioni (
+            INSERT INTO whatsapp (
                 id_ticket,
-                canale,
-                tipo,
-                contenuto,
-                url_audio
+                contenuto
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?)
             """;
 
         try (
@@ -37,10 +30,7 @@ public class TicketConversazioneDao {
                 PreparedStatement ps = conn.prepareStatement(sql)
         ) {
             ps.setLong(1, idTicket);
-            ps.setString(2, canale);
-            ps.setString(3, tipo);
-            ps.setString(4, contenuto);
-            ps.setString(5, urlAudio);
+            ps.setString(2, contenuto);
 
             ps.executeUpdate();
 

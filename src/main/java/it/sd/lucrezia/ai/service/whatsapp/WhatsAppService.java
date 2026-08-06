@@ -205,13 +205,7 @@ public class WhatsAppService {
             }
 
             int allegatiCollegati = collegaAllegatiTemporanei(from, idTicket);
-            ticketConversazioneDao.insertConversazione(
-                    idTicket,
-                    "WHATSAPP",
-                    "TESTO",
-                    buildConversazioneOriginale(userSession),
-                    null
-            );
+            ticketConversazioneDao.insertConversazione(idTicket, buildConversazioneOriginale(userSession));
 
             rispostaPerUtente += """
                     Ticket aperto correttamente ✅
@@ -257,13 +251,7 @@ public class WhatsAppService {
                 return;
             }
 
-            ticketConversazioneDao.insertConversazione(
-                    idTicket,
-                    "WHATSAPP",
-                    "TESTO",
-                    buildConversazioneOriginale(userSession),
-                    null
-            );
+            ticketConversazioneDao.insertConversazione(idTicket, buildConversazioneOriginale(userSession));
             
             rispostaPerUtente =
                     "Grazie per le informazioni 😊\n\n" +
