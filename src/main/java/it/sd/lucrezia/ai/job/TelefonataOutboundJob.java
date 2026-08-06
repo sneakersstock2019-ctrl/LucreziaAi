@@ -21,7 +21,7 @@ public class TelefonataOutboundJob {
     private final ElevenLabsService elevenLabsService;
 
     @Scheduled(
-        fixedDelayString = "${outbound.job.fixed-delay-ms}"
+        fixedDelayString = "${voice.elevenlabs.job-call-outbound-delay-ms}"
     )
     public void processaChiamateOutbound() {
     	System.out.println("Avvio Job Chiamata Fornitore");
