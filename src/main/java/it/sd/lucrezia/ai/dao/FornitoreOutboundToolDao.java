@@ -176,6 +176,145 @@ public class FornitoreOutboundToolDao {
             }
         }
     }
+    
+    public boolean rifiutaAssegnazione(
+            Long idTelefonataOutbound,
+            String motivo) {
+
+        String sqlLock = """
+            SELECT
+                tel.id_ticket,
+                tel.id_fornitore
+            FROM telefonata_outbound tel
+            WHERE tel.id = ?
+            FOR UPDATE
+        """;
+
+        String sqlTicket = """
+            UPDATE ticket
+            SET id_fornitore = NULL,
+                id_stato = (
+                    SELECT id
+                    FROM stati_ticket
+                    WHERE codice = 'APERTO'
+                ),
+                data_presa_in_carico = NULL,
+                data_intervento_prevista = NULL,
+                data_ultimo_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND id_fornitore = ?
+        """;
+
+        String sqlTelefonata = """
+            UPDATE telefonata_outbound
+            SET esito = 'TICKET_RIFIUTATO',
+                motivo_chiusura = ?,
+                data_aggiornamento = CURRENT_TIMESTAMP,
+                errore = NULL
+            WHERE id = ?
+        """;
+
+        Connection conn = null;
+
+        try {
+            conn = dataSource.getConnection();
+            conn.setAutoCommit(false);
+
+            Long idTicket;
+            Long idFornitore;
+
+            try (PreparedStatement ps = conn.prepareStatement(sqlLock)) {
+
+                ps.setLong(1, idTelefonataOutbound);
+
+                try (ResultSet rs = ps.executeQuery()) {
+
+                    if (!rs.next()) {
+                        conn.rollback();
+                        return false;
+                    }
+
+                    idTicket = getNullableLong(rs, "id_ticket");
+                    idFornitore = getNullableLong(rs, "id_fornitore");
+
+                    if (idTicket == null || idFornitore == null) {
+                        throw new IllegalStateException(
+                                "La telefonata outbound non è collegata "
+                                        + "a un ticket e a un fornitore"
+                        );
+                    }
+                }
+            }
+
+            int ticketAggiornati;
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement(sqlTicket)) {
+
+                ps.setLong(1, idTicket);
+                ps.setLong(2, idFornitore);
+
+                ticketAggiornati = ps.executeUpdate();
+            }
+
+            if (ticketAggiornati != 1) {
+                conn.rollback();
+
+                throw new IllegalStateException(
+                        "Il ticket non risulta più assegnato "
+                                + "al fornitore della telefonata"
+                );
+            }
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement(sqlTelefonata)) {
+
+                ps.setString(1, motivo);
+                ps.setLong(2, idTelefonataOutbound);
+
+                int telefonateAggiornate = ps.executeUpdate();
+
+                if (telefonateAggiornate != 1) {
+                    conn.rollback();
+
+                    throw new IllegalStateException(
+                            "Aggiornamento telefonata outbound non riuscito"
+                    );
+                }
+            }
+
+            conn.commit();
+            return true;
+
+        } catch (Exception e) {
+
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (Exception rollbackException) {
+                    rollbackException.printStackTrace();
+                }
+            }
+
+            throw new RuntimeException(
+                    "Errore durante il rifiuto dell'assegnazione "
+                            + "dalla telefonata outbound "
+                            + idTelefonataOutbound,
+                    e
+            );
+
+        } finally {
+
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (Exception closeException) {
+                    closeException.printStackTrace();
+                }
+            }
+        }
+    }
 
     private Long getNullableLong(
             ResultSet rs,

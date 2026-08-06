@@ -245,6 +245,60 @@ public class ElevenLabsToolController {
                 )
         );
     }
+    
+    @PostMapping("/rejectAssignment")
+    public ToolResult<Map<String, Object>> rejectAssignment(
+            @RequestBody Map<String, Object> body) {
+
+        logTool("rejectAssignment", body);
+
+        Long idTelefonataOutbound =
+                getLong(body, "telefonata_outbound_id");
+
+        String motivo =
+                safeRaw(body.get("motivo"));
+
+        if (idTelefonataOutbound == null) {
+            return missingField("telefonata_outbound_id");
+        }
+
+        if (motivo.isBlank()) {
+            return missingField("motivo");
+        }
+
+        boolean aggiornato =
+                fornitoreOutboundToolDao.rifiutaAssegnazione(
+                        idTelefonataOutbound,
+                        motivo
+                );
+
+        if (!aggiornato) {
+            return ToolResult.error(
+                    "KO",
+                    ToolNextAction.ASK_FOR_MISSING_INFORMATION,
+                    Map.of(
+                            "telefonata_outbound_id",
+                            idTelefonataOutbound,
+                            "reason",
+                            "Telefonata outbound non trovata"
+                    )
+            );
+        }
+
+        return ToolResult.ok(
+                "OK",
+                ToolNextAction.ASSIGNMENT_REJECTED,
+                Map.of(
+                        "telefonata_outbound_id",
+                        idTelefonataOutbound,
+                        "motivo",
+                        motivo,
+                        "esito",
+                        "TICKET_RIFIUTATO",
+                        "ticket_riaperto", true
+                )
+        );
+    }
 
     private ToolResult<Map<String, Object>> missingField(String field) {
         return ToolResult.error(

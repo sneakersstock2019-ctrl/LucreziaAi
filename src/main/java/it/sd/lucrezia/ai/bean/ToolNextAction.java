@@ -11,4 +11,6 @@ public final class ToolNextAction {
     public static final String NONE = "NONE";
     
     public static final String CONFIRM_APPOINTMENT = "CONFIRM_APPOINTMENT";
+    public static final String ASSIGNMENT_REJECTED = "ASSIGNMENT_REJECTED";
+    
 }
