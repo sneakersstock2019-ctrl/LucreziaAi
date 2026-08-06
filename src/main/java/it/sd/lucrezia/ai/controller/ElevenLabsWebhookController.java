@@ -280,22 +280,47 @@ public class ElevenLabsWebhookController {
             return "";
         }
 
-        return java.util.stream.StreamSupport.stream(transcriptNode.spliterator(), false)
+        return java.util.stream.StreamSupport
+                .stream(transcriptNode.spliterator(), false)
                 .map(item -> {
-                    String role = item.path("role").asText();
-                    String message = item.path("message").asText();
 
-                    if ("agent".equals(role)) {
+                    String role = item.path("role").asText("");
+                    String message = item.path("message").asText("");
+
+                    return new String[] {
+                            role != null ? role.trim() : "",
+                            message != null ? message.trim() : ""
+                    };
+                })
+                .filter(values -> isValidTranscriptMessage(values[1]))
+                .map(values -> {
+
+                    String role = values[0];
+                    String message = values[1];
+
+                    if ("agent".equalsIgnoreCase(role)) {
                         return "Lucrezia: " + message;
                     }
 
-                    if ("user".equals(role)) {
+                    if ("user".equalsIgnoreCase(role)) {
                         return "Condomino: " + message;
+                    }
+
+                    if (role.isBlank()) {
+                        return message;
                     }
 
                     return role + ": " + message;
                 })
                 .collect(Collectors.joining("\n\n"));
+    }
+
+    private boolean isValidTranscriptMessage(String message) {
+
+        return message != null
+                && !message.isBlank()
+                && !"null".equalsIgnoreCase(message.trim())
+                && !"undefined".equalsIgnoreCase(message.trim());
     }
 
     private Long getLong(String value) {

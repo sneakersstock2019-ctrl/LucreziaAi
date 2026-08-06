@@ -7,9 +7,12 @@ openai:
 voice:
   elevenlabs:
     api-key: ${ELEVENLABS_API_KEY}
-    agent-id: ${ELEVENLABS_AGENT_ID}
+    fornitore-agent-id: ${ELEVENLABS_FORNITORE_AGENT_ID}
+    agent-phone-number-id: ${ELEVENLABS_AGENT_PHONE_NUMBER_ID}
     pre-call-token: ${ELEVENLABS_PRE_CALL_TOKEN}
+    outbound-url: https://api.elevenlabs.io/v1/convai/sip-trunk/outbound-call
     app-public-base-url: https://api.lucreziaai.it
+    dashboard-public-base-url: #
 
 whatsapp:
   token: ${WHATSAPP_TOKEN}
