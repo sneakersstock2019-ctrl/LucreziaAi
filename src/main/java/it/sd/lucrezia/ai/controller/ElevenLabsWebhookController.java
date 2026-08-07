@@ -22,8 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.sd.lucrezia.ai.bean.ElevenLabsPreCallRequest;
+import it.sd.lucrezia.ai.bean.RetryOutboundResult;
 import it.sd.lucrezia.ai.bean.VoiceConversationContext;
+import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
+import it.sd.lucrezia.ai.dao.TelefonataOutboundDao;
 import it.sd.lucrezia.ai.service.voice.ConversationInitializationService;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +36,8 @@ import lombok.RequiredArgsConstructor;
 public class ElevenLabsWebhookController {
 
     private final TelefonataDao telefonataDao;
+    private final TelefonataOutboundDao telefonataOutboundDao;
+    private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
     private final ConversationInitializationService conversationInitializationService;
 
     @Value("${voice.elevenlabs.pre-call-token}")
@@ -209,45 +214,143 @@ public class ElevenLabsWebhookController {
                 data.path("conversation_id").asText();
 
         String reason =
-                data.path("reason").asText("UNKNOWN");
+                data.path("reason")
+                        .asText("UNKNOWN");
 
         System.out.println(
-                "ELEVENLABS CALL FAILURE "
+                "ELEVENLABS CALL FAILURE"
+                        + " conversationId="
                         + conversationId
                         + " reason="
                         + reason
         );
 
-//        telefonataOutboundDao.gestisciMancataRisposta(
-//                conversationId,
-//                reason
-//        );
+        Long idTelefonataOutbound =
+                telefonataOutboundDao
+                        .findIdByConversationId(
+                                conversationId
+                        );
+
+        if (idTelefonataOutbound == null) {
+
+            System.out.println(
+                    "Nessuna telefonata outbound trovata"
+                            + " per conversationId="
+                            + conversationId
+            );
+
+            return;
+        }
+
+        RetryOutboundResult retry =
+                fornitoreOutboundToolDao
+                        .programmaRetryMancataRisposta(
+                                idTelefonataOutbound,
+                                reason
+                        );
+
+        if (retry == null) {
+            return;
+        }
+
+        System.out.println(
+                "RETRY OUTBOUND GESTITO"
+                        + " id=" + idTelefonataOutbound
+                        + " tentativo="
+                        + retry.getTentativi()
+                        + "/"
+                        + retry.getMassimoTentativi()
+                        + " stato="
+                        + retry.getStato()
+                        + " prossimoTentativo="
+                        + retry.getProssimoTentativo()
+        );
     }
     
-    private void handleTranscription(JsonNode body) throws Exception {
+    private void handleTranscription(JsonNode body)
+            throws Exception {
 
         JsonNode data = body.path("data");
 
-        String conversationId = data.path("conversation_id").asText();
-        String callSid = data.path("metadata").path("phone_call").path("call_sid").asText();
+        String conversationId =
+                data.path("conversation_id").asText();
 
-        Long idTelefonata = getLong(
+        String callSid =
+                data.path("metadata")
+                        .path("phone_call")
+                        .path("call_sid")
+                        .asText();
+
+        JsonNode dynamicVariables =
                 data.path("conversation_initiation_client_data")
-                        .path("dynamic_variables")
-                        .path("id_telefonata")
-                        .asText()
-        );
+                        .path("dynamic_variables");
 
-        long durata = data.path("metadata").path("call_duration_secs").asLong(0);
+        long durata =
+                data.path("metadata")
+                        .path("call_duration_secs")
+                        .asLong(0);
 
-        String trascrizione = buildTranscript(data.path("transcript"));
+        int numeroTool =
+                data.path("tool_names").size();
+
+        /*
+         * Prima verifichiamo se è OUTBOUND.
+         */
+        Long idTelefonataOutbound =
+                getLong(
+                        dynamicVariables
+                                .path("telefonata_outbound_id")
+                                .asText()
+                );
+
+        if (idTelefonataOutbound != null) {
+
+            String trascrizione =
+                    buildTranscript(
+                            data.path("transcript"),
+                            "Fornitore"
+                    );
+
+            telefonataOutboundDao.completaPostCall(
+                    idTelefonataOutbound,
+                    conversationId,
+                    trascrizione,
+                    durata,
+                    numeroTool
+            );
+
+            System.out.println(
+                    "ELEVENLABS OUTBOUND TRASCRIZIONE SALVATA"
+                            + " - id=" + idTelefonataOutbound
+                            + " - conversationId="
+                            + conversationId
+            );
+
+            return;
+        }
+
+        /*
+         * Altrimenti manteniamo la gestione INBOUND esistente.
+         */
+        Long idTelefonata =
+                getLong(
+                        dynamicVariables
+                                .path("id_telefonata")
+                                .asText()
+                );
+
+        String trascrizione =
+                buildTranscript(
+                        data.path("transcript"),
+                        "Condomino"
+                );
 
         telefonataDao.chiudiTelefonata(
                 idTelefonata,
                 "COMPLETATA",
                 trascrizione,
                 durata,
-                data.path("tool_names").size(),
+                numeroTool,
                 callSid
         );
 
@@ -257,68 +360,160 @@ public class ElevenLabsWebhookController {
                 callSid
         );
 
-        System.out.println("ELEVENLABS TRASCRIZIONE SALVATA - conversationId=" + conversationId);
+        System.out.println(
+                "ELEVENLABS INBOUND TRASCRIZIONE SALVATA"
+                        + " - conversationId="
+                        + conversationId
+        );
     }
 
     private void handleAudio(JsonNode body) {
 
         JsonNode data = body.path("data");
 
-        String conversationId = data.path("conversation_id").asText();
-        String fullAudio = data.path("full_audio").asText();
+        String conversationId =
+                data.path("conversation_id").asText();
 
-        if (conversationId == null || conversationId.isBlank()
-                || fullAudio == null || fullAudio.isBlank()) {
+        String fullAudio =
+                data.path("full_audio").asText();
+
+        if (conversationId == null
+                || conversationId.isBlank()
+                || fullAudio == null
+                || fullAudio.isBlank()) {
+
             return;
         }
 
-        String audioUrl = publicApiBaseUrl + "/elevenlabs/webhook/audio/" + conversationId + ".mp3";
+        String audioUrl =
+                publicApiBaseUrl
+                        + "/elevenlabs/webhook/audio/"
+                        + conversationId
+                        + ".mp3";
 
+        /*
+         * Prima cerchiamo fra le outbound.
+         */
+        Long idTelefonataOutbound =
+                telefonataOutboundDao
+                        .findIdByConversationId(
+                                conversationId
+                        );
+
+        if (idTelefonataOutbound != null) {
+
+            telefonataOutboundDao.updateAudioByConversationId(
+                    conversationId,
+                    fullAudio,
+                    audioUrl
+            );
+
+            System.out.println(
+                    "ELEVENLABS OUTBOUND AUDIO SALVATO"
+                            + " - id="
+                            + idTelefonataOutbound
+                            + " - conversationId="
+                            + conversationId
+                            + " - size="
+                            + fullAudio.length()
+            );
+
+            return;
+        }
+
+        /*
+         * Altrimenti è inbound.
+         */
         telefonataDao.updateAudioByConversationId(
                 conversationId,
                 fullAudio,
                 audioUrl
         );
 
-        System.out.println("ELEVENLABS AUDIO SALVATO - conversationId="
-                + conversationId + " size=" + fullAudio.length());
+        System.out.println(
+                "ELEVENLABS INBOUND AUDIO SALVATO"
+                        + " - conversationId="
+                        + conversationId
+                        + " size="
+                        + fullAudio.length()
+        );
     }
-
+    
     @GetMapping("/audio/{conversationId}.mp3")
-    public ResponseEntity<byte[]> audio(@PathVariable String conversationId) {
+    public ResponseEntity<byte[]> audio(
+            @PathVariable String conversationId) {
 
-        String audioBase64 = telefonataDao.findAudioBase64ByConversationId(conversationId);
+        /*
+         * Prima outbound.
+         */
+        String audioBase64 =
+                telefonataOutboundDao
+                        .findAudioBase64ByConversationId(
+                                conversationId
+                        );
 
+        /*
+         * Se non trovato, inbound.
+         */
         if (audioBase64 == null || audioBase64.isBlank()) {
+
+            audioBase64 =
+                    telefonataDao
+                            .findAudioBase64ByConversationId(
+                                    conversationId
+                            );
+        }
+
+        if (audioBase64 == null
+                || audioBase64.isBlank()) {
+
             return ResponseEntity.notFound().build();
         }
 
-        byte[] audio = Base64.getDecoder().decode(audioBase64);
+        byte[] audio =
+                Base64.getDecoder().decode(audioBase64);
 
         return ResponseEntity.ok()
-                .contentType(MediaType.valueOf("audio/mpeg"))
+                .contentType(
+                        MediaType.valueOf("audio/mpeg")
+                )
                 .body(audio);
     }
 
-    private String buildTranscript(JsonNode transcriptNode) {
+    private String buildTranscript(
+            JsonNode transcriptNode,
+            String userLabel) {
 
-        if (transcriptNode == null || !transcriptNode.isArray()) {
+        if (transcriptNode == null
+                || !transcriptNode.isArray()) {
+
             return "";
         }
 
         return java.util.stream.StreamSupport
-                .stream(transcriptNode.spliterator(), false)
+                .stream(
+                        transcriptNode.spliterator(),
+                        false
+                )
                 .map(item -> {
 
-                    String role = item.path("role").asText("");
-                    String message = item.path("message").asText("");
+                    String role =
+                            item.path("role").asText("");
+
+                    String message =
+                            item.path("message").asText("");
 
                     return new String[] {
                             role != null ? role.trim() : "",
                             message != null ? message.trim() : ""
                     };
                 })
-                .filter(values -> isValidTranscriptMessage(values[1]))
+                .filter(
+                        values ->
+                                isValidTranscriptMessage(
+                                        values[1]
+                                )
+                )
                 .map(values -> {
 
                     String role = values[0];
@@ -329,7 +524,7 @@ public class ElevenLabsWebhookController {
                     }
 
                     if ("user".equalsIgnoreCase(role)) {
-                        return "Condomino: " + message;
+                        return userLabel + ": " + message;
                     }
 
                     if (role.isBlank()) {
@@ -338,7 +533,9 @@ public class ElevenLabsWebhookController {
 
                     return role + ": " + message;
                 })
-                .collect(Collectors.joining("\n\n"));
+                .collect(
+                        Collectors.joining("\n\n")
+                );
     }
 
     private boolean isValidTranscriptMessage(String message) {

@@ -443,6 +443,218 @@ public class TelefonataOutboundDao {
         }
     }
     
+    public Long findIdByConversationId(String conversationId) {
+
+        if (conversationId == null || conversationId.isBlank()) {
+            return null;
+        }
+
+        String sql = """
+            SELECT id
+            FROM telefonata_outbound
+            WHERE conversation_id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, conversationId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    return rs.getLong("id");
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore ricerca telefonata outbound per conversationId="
+                            + conversationId,
+                    e
+            );
+        }
+
+        return null;
+    }
+    
+    public void completaPostCall(
+            Long idTelefonataOutbound,
+            String conversationId,
+            String trascrizione,
+            long durataSecondi,
+            int numeroTool) {
+
+        if (idTelefonataOutbound == null) {
+            return;
+        }
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET conversation_id = COALESCE(conversation_id, ?),
+
+                trascrizione = ?,
+
+                durata_secondi = ?,
+
+                numero_tool = ?,
+
+                /*
+                 * Il post-call chiude tecnicamente solo una chiamata
+                 * che non è già stata gestita da tool/retry.
+                 */
+                stato = CASE
+
+                    WHEN stato IN (
+                        'FALLITA',
+                        'ANNULLATA',
+                        'DA_AVVIARE',
+                        'RICHIAMATA_PROGRAMMATA'
+                    )
+                        THEN stato
+
+                    ELSE 'COMPLETATA'
+
+                END,
+
+                /*
+                 * data_fine rappresenta la conclusione definitiva
+                 * dell'intero processo outbound.
+                 *
+                 * Se è previsto un retry, resta NULL.
+                 */
+                data_fine = CASE
+
+                    WHEN stato IN (
+                        'DA_AVVIARE',
+                        'RICHIAMATA_PROGRAMMATA'
+                    )
+                        THEN NULL
+
+                    ELSE COALESCE(
+                        data_fine,
+                        CURRENT_TIMESTAMP
+                    )
+
+                END,
+
+                /*
+                 * Non sovrascriviamo mai un esito deciso da un tool.
+                 */
+                esito = COALESCE(
+                    esito,
+                    'NESSUNA_DECISIONE'
+                ),
+
+                data_aggiornamento = CURRENT_TIMESTAMP
+
+            WHERE id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, conversationId);
+            ps.setString(2, trascrizione);
+            ps.setLong(3, durataSecondi);
+            ps.setInt(4, numeroTool);
+            ps.setLong(5, idTelefonataOutbound);
+
+            int updated = ps.executeUpdate();
+
+            System.out.println(
+                    "OUTBOUND POST-CALL UPDATE"
+                            + " id=" + idTelefonataOutbound
+                            + " conversationId=" + conversationId
+                            + " updated=" + updated
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore completamento post-call outbound "
+                            + idTelefonataOutbound,
+                    e
+            );
+        }
+    }
+    
+    public void updateAudioByConversationId(
+            String conversationId,
+            String audioBase64,
+            String audioUrl) {
+
+        if (conversationId == null || conversationId.isBlank()) {
+            return;
+        }
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET audio_base64 = ?,
+                url_audio = ?,
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE conversation_id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, audioBase64);
+            ps.setString(2, audioUrl);
+            ps.setString(3, conversationId);
+
+            int updated = ps.executeUpdate();
+
+            System.out.println(
+                    "OUTBOUND AUDIO UPDATE"
+                            + " conversationId=" + conversationId
+                            + " updated=" + updated
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore salvataggio audio outbound conversationId="
+                            + conversationId,
+                    e
+            );
+        }
+    }
+    
+    public String findAudioBase64ByConversationId(
+            String conversationId) {
+
+        String sql = """
+            SELECT audio_base64
+            FROM telefonata_outbound
+            WHERE conversation_id = ?
+        """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, conversationId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    return rs.getString("audio_base64");
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Errore lettura audio outbound conversationId="
+                            + conversationId,
+                    e
+            );
+        }
+
+        return null;
+    }
+    
     private Long getNullableLong(
             ResultSet rs,
             String columnName) throws SQLException {
