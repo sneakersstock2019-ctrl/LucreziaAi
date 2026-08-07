@@ -17,6 +17,7 @@ whatsapp:
   token: ${WHATSAPP_TOKEN}
   phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID}
   verify-token: ${WHATSAPP_VERIFY_TOKEN}
+  url-api-meta-messages: https://graph.facebook.com/v25.0/{}/messages
   
 spring:
   datasource:

@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import it.sd.lucrezia.ai.bean.FornitoreWhatsAppSession;
 import it.sd.lucrezia.ai.bean.OpenAIRequestMessage;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.UserSession;
@@ -46,15 +47,14 @@ public class WhatsAppService {
 
     @Value("${whatsapp.phone-number-id}")
     private String phoneNumberId;
+    
+    @Value("${whatsapp.url-api-meta-messages}")
+    private String urlApiMetaMessages;
 
     private static final String STEP_SCELTA_TICKET = "SCELTA_TICKET";
     private static final String STEP_NUOVA_SEGNALAZIONE = "NUOVA_SEGNALAZIONE";
     private static final String STEP_ATTESA_ALLEGATI = "ATTESA_ALLEGATI";
     
-    private static final String STEP_FORNITORE_SCELTA_TICKET = "FORNITORE_SCELTA_TICKET";
-    private static final String STEP_FORNITORE_DATA_INTERVENTO = "FORNITORE_DATA_INTERVENTO";
-    private static final String STEP_FORNITORE_GESTIONE_TICKET = "FORNITORE_GESTIONE_TICKET";
-
     private final OpenAIService openAIService;
     private final UtenteDao utenteDao;
     private final TicketDao ticketDao;
@@ -64,13 +64,12 @@ public class WhatsAppService {
     private final AllegatoDao allegatoDao;
     private final TicketConversazioneDao ticketConversazioneDao;
     private final LucreziaPromptBuilder lucreziaPromptBuilder;
-
+    
+    private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, FornitoreWhatsAppSession> sessioniFornitori = new ConcurrentHashMap<>();
+    
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
-
-    private final String urlApiMetaMessages = "https://graph.facebook.com/v25.0/{}/messages";
-
-    private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
 
     public void elaboraMessaggio(String body) {
         try {
@@ -297,6 +296,22 @@ public class WhatsAppService {
 
         try {
 
+            FornitoreWhatsAppSession session =
+                    sessioniFornitori.computeIfAbsent(
+                            from,
+                            key -> new FornitoreWhatsAppSession()
+                    );
+
+            /*
+             * Salviamo subito il messaggio ricevuto.
+             */
+            session.getCronologiaMessaggi().add(
+                    new WhatsAppMessage(
+                            "user",
+                            testoMessaggio
+                    )
+            );
+
             List<Long> ticketIds =
                     ticketDao.findTicketAssegnatiApertiByFornitore(
                             fornitore.getId()
@@ -304,11 +319,14 @@ public class WhatsAppService {
 
             if (ticketIds.isEmpty()) {
 
-                invioMessaggio(
-                        from,
+                String risposta =
                         "Ciao " + fornitore.getNome()
-                                + ", al momento non risultano "
-                                + "interventi aperti assegnati a te."
+                        + ", al momento non risultano interventi aperti assegnati a te.";
+
+                salvaRispostaFornitore(
+                        session,
+                        from,
+                        risposta
                 );
 
                 return;
@@ -327,26 +345,54 @@ public class WhatsAppService {
                 }
             }
 
+            /*
+             * Se c'è un solo ticket sappiamo già
+             * di quale intervento stiamo parlando.
+             */
+            if (session.getIdTicket() == null
+                    && tickets.size() == 1) {
+
+                session.setIdTicket(
+                        tickets.get(0).getId()
+                );
+            }
+
             WhatsAppFornitoreAiResponse aiResponse =
                     askLucreziaFornitore(
                             testoMessaggio,
                             fornitore,
-                            tickets
+                            tickets,
+                            session
                     );
 
             if (aiResponse == null) {
 
-                invioMessaggio(
-                        from,
+                String risposta =
                         "Non sono riuscita a interpretare la risposta. "
-                                + "Puoi indicarmi se puoi prendere in carico "
-                                + "l'intervento e, in caso affermativo, "
-                                + "la prima data disponibile?"
+                        + "Puoi indicarmi se puoi prendere in carico "
+                        + "l'intervento e, in caso affermativo, quando potresti intervenire?";
+
+                salvaRispostaFornitore(
+                        session,
+                        from,
+                        risposta
                 );
 
                 return;
             }
-            
+
+            /*
+             * L'AI non deve dimenticare il ticket
+             * già individuato precedentemente.
+             */
+            if (aiResponse.getTicketId() == null
+                    && session.getIdTicket() != null) {
+
+                aiResponse.setTicketId(
+                        session.getIdTicket()
+                );
+            }
+
             if (aiResponse.getTicketId() == null
                     && tickets.size() == 1) {
 
@@ -355,11 +401,18 @@ public class WhatsAppService {
                 );
             }
 
+            if (aiResponse.getTicketId() != null) {
+                session.setIdTicket(
+                        aiResponse.getTicketId()
+                );
+            }
+
             gestisciRispostaAiFornitore(
                     from,
                     fornitore,
                     aiResponse,
-                    tickets
+                    tickets,
+                    session
             );
 
         } catch (Exception e) {
@@ -369,8 +422,7 @@ public class WhatsAppService {
             invioMessaggio(
                     from,
                     "Mi dispiace, si è verificato un problema "
-                            + "durante la gestione dell'intervento. "
-                            + "Riprova tra poco."
+                    + "durante la gestione dell'intervento. Riprova tra poco."
             );
         }
     }
@@ -378,7 +430,8 @@ public class WhatsAppService {
     private WhatsAppFornitoreAiResponse askLucreziaFornitore(
             String testoMessaggio,
             Utente fornitore,
-            List<TicketStatusInfo> tickets) {
+            List<TicketStatusInfo> tickets,
+            FornitoreWhatsAppSession session) {
 
         try {
 
@@ -390,17 +443,29 @@ public class WhatsAppService {
                             "system",
                             lucreziaPromptBuilder.buildFornitorePrompt(
                                     fornitore,
-                                    tickets
+                                    tickets,
+                                    session
                             )
                     )
             );
 
-            messages.add(
-                    new OpenAIRequestMessage(
-                            "user",
-                            testoMessaggio
-                    )
-            );
+            /*
+             * Passiamo tutta la conversazione precedente.
+             *
+             * L'ultimo messaggio dell'utente è già presente
+             * nella cronologia perché lo abbiamo inserito
+             * prima di chiamare questo metodo.
+             */
+            for (WhatsAppMessage message :
+                    session.getCronologiaMessaggi()) {
+
+                messages.add(
+                        new OpenAIRequestMessage(
+                                message.getRole(),
+                                message.getContent()
+                        )
+                );
+            }
 
             return openAIService.askLucreziaFornitore(
                     messages
@@ -413,16 +478,75 @@ public class WhatsAppService {
         }
     }
     
+    private void salvaRispostaFornitore(
+            FornitoreWhatsAppSession session,
+            String telefono,
+            String risposta) {
+
+        session.getCronologiaMessaggi().add(
+                new WhatsAppMessage(
+                        "assistant",
+                        risposta
+                )
+        );
+
+        invioMessaggio(
+                telefono,
+                risposta
+        );
+    }
+    
     private void gestisciRispostaAiFornitore(
             String from,
             Utente fornitore,
             WhatsAppFornitoreAiResponse aiResponse,
-            List<TicketStatusInfo> tickets) {
+            List<TicketStatusInfo> tickets,
+            FornitoreWhatsAppSession session) {
 
         String action = aiResponse.getAction();
 
-        if (action == null) {
+        if (action == null || action.isBlank()) {
             action = "UNCLEAR";
+        }
+
+        /*
+         * Se l'AI non restituisce il ticket ma nella sessione
+         * lo abbiamo già identificato, utilizziamo quello.
+         */
+        if (aiResponse.getTicketId() == null
+                && session.getIdTicket() != null) {
+
+            aiResponse.setTicketId(
+                    session.getIdTicket()
+            );
+        }
+
+        /*
+         * Se esiste un solo ticket assegnato al fornitore,
+         * non ha senso chiedergli quale ticket intende.
+         */
+        if (aiResponse.getTicketId() == null
+                && tickets != null
+                && tickets.size() == 1) {
+
+            aiResponse.setTicketId(
+                    tickets.get(0).getId()
+            );
+
+            session.setIdTicket(
+                    tickets.get(0).getId()
+            );
+        }
+
+        /*
+         * Se l'AI ha identificato un ticket,
+         * lo manteniamo nella sessione per i messaggi successivi.
+         */
+        if (aiResponse.getTicketId() != null) {
+
+            session.setIdTicket(
+                    aiResponse.getTicketId()
+            );
         }
 
         switch (action.toUpperCase()) {
@@ -432,7 +556,8 @@ public class WhatsAppService {
                 gestisciAccettazioneFornitore(
                         from,
                         fornitore,
-                        aiResponse
+                        aiResponse,
+                        session
                 );
             }
 
@@ -441,7 +566,8 @@ public class WhatsAppService {
                 gestisciRifiutoFornitore(
                         from,
                         fornitore,
-                        aiResponse
+                        aiResponse,
+                        session
                 );
             }
 
@@ -457,7 +583,39 @@ public class WhatsAppService {
                             + "potresti effettuare l'intervento?";
                 }
 
-                invioMessaggio(
+                /*
+                 * IMPORTANTISSIMO:
+                 * salviamo anche la risposta di Lucrezia nella
+                 * cronologia della sessione.
+                 *
+                 * Così al prossimo messaggio OpenAI vedrà:
+                 *
+                 * Fornitore: posso venire mercoledì
+                 * Lucrezia: a che ora?
+                 * Fornitore: alle 16
+                 */
+                salvaRispostaFornitore(
+                        session,
+                        from,
+                        reply
+                );
+            }
+
+            case "UNCLEAR" -> {
+
+                String reply = aiResponse.getReply();
+
+                if (reply == null || reply.isBlank()) {
+
+                    reply =
+                            "Non sono sicura di aver capito. "
+                            + "Puoi indicarmi se puoi prendere in carico "
+                            + "l'intervento e, in caso affermativo, "
+                            + "quando potresti intervenire?";
+                }
+
+                salvaRispostaFornitore(
+                        session,
                         from,
                         reply
                 );
@@ -465,13 +623,16 @@ public class WhatsAppService {
 
             default -> {
 
-                invioMessaggio(
-                        from,
-                        """
-                        Non sono sicura di aver capito.
+                String reply =
+                        "Non sono sicura di aver capito. "
+                        + "Puoi indicarmi se puoi prendere in carico "
+                        + "l'intervento e, in caso affermativo, "
+                        + "quando potresti intervenire?";
 
-                        Puoi indicarmi se puoi prendere in carico l'intervento e, in caso affermativo, quando potresti intervenire?
-                        """
+                salvaRispostaFornitore(
+                        session,
+                        from,
+                        reply
                 );
             }
         }
@@ -480,7 +641,8 @@ public class WhatsAppService {
     private void gestisciAccettazioneFornitore(
             String from,
             Utente fornitore,
-            WhatsAppFornitoreAiResponse response) {
+            WhatsAppFornitoreAiResponse response,
+            FornitoreWhatsAppSession session) {
 
         if (response.getTicketId() == null
                 || response.getDataIntervento() == null
@@ -560,7 +722,8 @@ public class WhatsAppService {
     private void gestisciRifiutoFornitore(
             String from,
             Utente fornitore,
-            WhatsAppFornitoreAiResponse response) {
+            WhatsAppFornitoreAiResponse response,
+            FornitoreWhatsAppSession session) {
 
         if (response.getTicketId() == null) {
 
