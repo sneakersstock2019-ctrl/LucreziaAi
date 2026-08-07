@@ -142,7 +142,7 @@ public class TicketDao {
             JOIN stati_ticket st
               ON st.id = t.id_stato
             WHERE t.id_fornitore = ?
-              AND st.codice NOT IN ('RISOLTO', 'CHIUSO', 'ANNULLATO')
+              AND st.codice NOT IN ('RISOLTO', 'CHIUSO', 'IN_LAVORAZIONE')
             ORDER BY t.data_apertura DESC
             """;
 
