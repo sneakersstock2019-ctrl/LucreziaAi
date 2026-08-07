@@ -673,9 +673,9 @@ public class FornitoreOutboundToolDao {
                     WHEN tentativi >= massimo_tentativi
                         THEN NULL
                     WHEN tentativi = 1
-                        THEN CURRENT_TIMESTAMP + INTERVAL '1 minutes'
-                    WHEN tentativi = 2
                         THEN CURRENT_TIMESTAMP + INTERVAL '5 minutes'
+                    WHEN tentativi = 2
+                        THEN CURRENT_TIMESTAMP + INTERVAL '15 minutes'
                     ELSE CURRENT_TIMESTAMP + INTERVAL '180 minutes'
                 END,
 
