@@ -177,7 +177,7 @@ public class TicketDao {
             SET id_stato = (
                     SELECT id
                     FROM stati_ticket
-                    WHERE codice = 'PRESO_IN_CARICO'
+                    WHERE codice = 'IN_LAVORAZIONE'
                 ),
                 data_presa_in_carico = CURRENT_TIMESTAMP,
                 data_intervento_prevista = ?,
