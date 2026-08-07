@@ -228,7 +228,7 @@ public class WhatsAppService {
             }
 
             int allegatiCollegati = collegaAllegatiTemporanei(from, idTicket);
-            ticketConversazioneDao.insertConversazione(idTicket, buildConversazioneOriginale(userSession));
+            ticketConversazioneDao.insertConversazione(idTicket, utente.getId(), "CONDOMINO", buildConversazioneOriginale(userSession));
 
             rispostaPerUtente += """
                     Ticket aperto correttamente ✅
@@ -274,7 +274,7 @@ public class WhatsAppService {
                 return;
             }
 
-            ticketConversazioneDao.insertConversazione(idTicket, buildConversazioneOriginale(userSession));
+            ticketConversazioneDao.insertConversazione(idTicket, utente.getId(), "CONDOMINO", buildConversazioneOriginale(userSession));
             
             rispostaPerUtente =
                     "Grazie per le informazioni 😊\n\n" +
@@ -648,11 +648,15 @@ public class WhatsAppService {
                 || response.getDataIntervento() == null
                 || response.getDataIntervento().isBlank()) {
 
-            invioMessaggio(
+            String risposta =
+                    "Perfetto. Può indicarmi anche "
+                    + "la data e l'orario previsti "
+                    + "per l'intervento?";
+
+            salvaRispostaFornitore(
+                    session,
                     from,
-                    "Perfetto. Puoi indicarmi anche "
-                            + "la data e l'orario previsti "
-                            + "per l'intervento?"
+                    risposta
             );
 
             return;
@@ -669,12 +673,16 @@ public class WhatsAppService {
 
         } catch (Exception e) {
 
-            invioMessaggio(
+            String risposta =
+                    "Ho capito che può prendere in carico "
+                    + "l'intervento, ma non sono riuscita "
+                    + "a interpretare correttamente la data. "
+                    + "Può indicarmela nuovamente?";
+
+            salvaRispostaFornitore(
+                    session,
                     from,
-                    "Ho capito che puoi prendere in carico "
-                            + "l'intervento, ma non sono riuscita "
-                            + "a interpretare la data. "
-                            + "Puoi indicarmela nuovamente?"
+                    risposta
             );
 
             return;
@@ -689,17 +697,17 @@ public class WhatsAppService {
 
         if (!updated) {
 
-            invioMessaggio(
+            salvaRispostaFornitore(
+                    session,
                     from,
                     "Non sono riuscita ad aggiornare "
-                            + "la segnalazione. Riprova tra poco."
+                            + "la segnalazione. Riprovi tra poco."
             );
 
             return;
         }
 
-        invioMessaggio(
-                from,
+        String risposta =
                 """
                 Perfetto ✅
 
@@ -715,8 +723,32 @@ public class WhatsAppService {
                                         "dd/MM/yyyy 'alle' HH:mm"
                                 )
                         )
-                )
+                );
+
+        /*
+         * Prima registriamo nella memoria anche
+         * l'ultima risposta di Lucrezia.
+         */
+        salvaRispostaFornitore(
+                session,
+                from,
+                risposta
         );
+
+        /*
+         * Poi salviamo tutta la conversazione sul DB.
+         */
+        ticketConversazioneDao.insertConversazione(
+                response.getTicketId(),
+                fornitore.getId(),
+                "FORNITORE",
+                buildConversazioneFornitore(session)
+        );
+
+        /*
+         * Soltanto alla fine eliminiamo la memoria.
+         */
+        sessioniFornitori.remove(from);
     }
     
     private void gestisciRifiutoFornitore(
@@ -758,6 +790,41 @@ public class WhatsAppService {
         );
     }
 
+    private String buildConversazioneFornitore(
+            FornitoreWhatsAppSession session) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (session == null
+                || session.getCronologiaMessaggi() == null) {
+            return "";
+        }
+
+        for (WhatsAppMessage message :
+                session.getCronologiaMessaggi()) {
+
+            if ("user".equals(message.getRole())) {
+
+                sb.append("Fornitore: ");
+
+            } else if ("assistant".equals(message.getRole())) {
+
+                sb.append("Lucrezia: ");
+
+            } else {
+
+                sb.append(message.getRole())
+                        .append(": ");
+            }
+
+            sb.append(
+                    message.getContent()
+            ).append("\n\n");
+        }
+
+        return sb.toString().trim();
+    }
+    
     private void gestisciSceltaTicket(String from,
                                       String testoMessaggio,
                                       String nomeUtente,

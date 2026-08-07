@@ -15,22 +15,37 @@ public class TicketConversazioneDao {
 
     private final DataSource dataSource;
 
-    public void insertConversazione(Long idTicket, String contenuto) {
+    public void insertConversazione(
+            Long idTicket,
+            Long idUtente,
+            String tipo,
+            String contenuto) {
 
         String sql = """
             INSERT INTO whatsapp (
                 id_ticket,
+                id_utente,
+                tipo,
                 contenuto
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?, ?)
             """;
 
         try (
                 Connection conn = dataSource.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)
         ) {
+
             ps.setLong(1, idTicket);
-            ps.setString(2, contenuto);
+
+            if (idUtente != null) {
+                ps.setLong(2, idUtente);
+            } else {
+                ps.setNull(2, java.sql.Types.BIGINT);
+            }
+
+            ps.setString(3, tipo);
+            ps.setString(4, contenuto);
 
             ps.executeUpdate();
 
@@ -38,20 +53,26 @@ public class TicketConversazioneDao {
             e.printStackTrace();
         }
     }
-    
-    public void updateAudioUrlByTicket(Long idTicket, String audioUrl) {
+
+    public void updateAudioUrlByTicket(
+            Long idTicket,
+            String audioUrl) {
+
         String sql = """
             UPDATE ticket_conversazioni
             SET url_audio = ?
             WHERE id_ticket = ?
               AND canale = 'TELEFONO'
-        """;
+            """;
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
 
             ps.setString(1, audioUrl);
             ps.setLong(2, idTicket);
+
             ps.executeUpdate();
 
         } catch (Exception e) {
