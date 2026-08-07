@@ -184,7 +184,6 @@ public class ElevenLabsWebhookController {
     
     @PostMapping("/post-call")
     public ResponseEntity<String> postCall(@RequestBody JsonNode body) {
-    	System.out.println(body.toPrettyString());
         String type = body.path("type").asText();
 
         try {

@@ -32,6 +32,8 @@ public class UserSession {
     
     private List<Long> openTicketIds;
     
+    public Long idTicketFornitore;
+    
     private List<TicketStatusInfo> ticketAperti = new ArrayList<>();
     
 }

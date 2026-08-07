@@ -1,5 +1,6 @@
 package it.sd.lucrezia.ai.service.whatsapp;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +18,14 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import it.sd.lucrezia.ai.bean.WhatsAppAllegatoTemporaneo;
-import it.sd.lucrezia.ai.bean.WhatsAppMessage;
 import it.sd.lucrezia.ai.bean.OpenAIRequestMessage;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.UserSession;
 import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.bean.WhatsAppAiResponse;
+import it.sd.lucrezia.ai.bean.WhatsAppAllegatoTemporaneo;
+import it.sd.lucrezia.ai.bean.WhatsAppFornitoreAiResponse;
+import it.sd.lucrezia.ai.bean.WhatsAppMessage;
 import it.sd.lucrezia.ai.dao.AllegatoDao;
 import it.sd.lucrezia.ai.dao.AllegatoTemporaneoDao;
 import it.sd.lucrezia.ai.dao.CondominioAiDao;
@@ -48,6 +50,10 @@ public class WhatsAppService {
     private static final String STEP_SCELTA_TICKET = "SCELTA_TICKET";
     private static final String STEP_NUOVA_SEGNALAZIONE = "NUOVA_SEGNALAZIONE";
     private static final String STEP_ATTESA_ALLEGATI = "ATTESA_ALLEGATI";
+    
+    private static final String STEP_FORNITORE_SCELTA_TICKET = "FORNITORE_SCELTA_TICKET";
+    private static final String STEP_FORNITORE_DATA_INTERVENTO = "FORNITORE_DATA_INTERVENTO";
+    private static final String STEP_FORNITORE_GESTIONE_TICKET = "FORNITORE_GESTIONE_TICKET";
 
     private final OpenAIService openAIService;
     private final UtenteDao utenteDao;
@@ -108,7 +114,25 @@ public class WhatsAppService {
     }
 
     private void processaMessaggio(String from, String testoMessaggio) {
+        /*
+         * Prima controlliamo se sta scrivendo un fornitore.
+         */
+        Utente fornitore = utenteDao.findFornitoreByTelefono(from);
 
+        if (fornitore != null) {
+
+            processaMessaggioFornitore(
+                    from,
+                    testoMessaggio,
+                    fornitore
+            );
+
+            return;
+        }
+
+        /*
+         * Altrimenti continuiamo con il normale flusso condomino.
+         */
         Utente utente = utenteDao.findCondominoByTelefono(from);
 
         if (utente == null) {
@@ -264,6 +288,311 @@ public class WhatsAppService {
         }
 
         invioMessaggio(from, rispostaPerUtente);
+    }
+    
+    private void processaMessaggioFornitore(
+            String from,
+            String testoMessaggio,
+            Utente fornitore) {
+
+        try {
+
+            List<Long> ticketIds =
+                    ticketDao.findTicketAssegnatiApertiByFornitore(
+                            fornitore.getId()
+                    );
+
+            if (ticketIds.isEmpty()) {
+
+                invioMessaggio(
+                        from,
+                        "Ciao " + fornitore.getNome()
+                                + ", al momento non risultano "
+                                + "interventi aperti assegnati a te."
+                );
+
+                return;
+            }
+
+            List<TicketStatusInfo> tickets =
+                    new ArrayList<>();
+
+            for (Long ticketId : ticketIds) {
+
+                TicketStatusInfo ticket =
+                        ticketDao.findTicketStatusById(ticketId);
+
+                if (ticket != null) {
+                    tickets.add(ticket);
+                }
+            }
+
+            WhatsAppFornitoreAiResponse aiResponse =
+                    askLucreziaFornitore(
+                            testoMessaggio,
+                            fornitore,
+                            tickets
+                    );
+
+            if (aiResponse == null) {
+
+                invioMessaggio(
+                        from,
+                        "Non sono riuscita a interpretare la risposta. "
+                                + "Puoi indicarmi se puoi prendere in carico "
+                                + "l'intervento e, in caso affermativo, "
+                                + "la prima data disponibile?"
+                );
+
+                return;
+            }
+            
+            if (aiResponse.getTicketId() == null
+                    && tickets.size() == 1) {
+
+                aiResponse.setTicketId(
+                        tickets.get(0).getId()
+                );
+            }
+
+            gestisciRispostaAiFornitore(
+                    from,
+                    fornitore,
+                    aiResponse,
+                    tickets
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            invioMessaggio(
+                    from,
+                    "Mi dispiace, si è verificato un problema "
+                            + "durante la gestione dell'intervento. "
+                            + "Riprova tra poco."
+            );
+        }
+    }
+    
+    private WhatsAppFornitoreAiResponse askLucreziaFornitore(
+            String testoMessaggio,
+            Utente fornitore,
+            List<TicketStatusInfo> tickets) {
+
+        try {
+
+            List<OpenAIRequestMessage> messages =
+                    new ArrayList<>();
+
+            messages.add(
+                    new OpenAIRequestMessage(
+                            "system",
+                            lucreziaPromptBuilder.buildFornitorePrompt(
+                                    fornitore,
+                                    tickets
+                            )
+                    )
+            );
+
+            messages.add(
+                    new OpenAIRequestMessage(
+                            "user",
+                            testoMessaggio
+                    )
+            );
+
+            return openAIService.askLucreziaFornitore(
+                    messages
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    private void gestisciRispostaAiFornitore(
+            String from,
+            Utente fornitore,
+            WhatsAppFornitoreAiResponse aiResponse,
+            List<TicketStatusInfo> tickets) {
+
+        String action = aiResponse.getAction();
+
+        if (action == null) {
+            action = "UNCLEAR";
+        }
+
+        switch (action.toUpperCase()) {
+
+            case "ACCEPT" -> {
+
+                gestisciAccettazioneFornitore(
+                        from,
+                        fornitore,
+                        aiResponse
+                );
+            }
+
+            case "REJECT" -> {
+
+                gestisciRifiutoFornitore(
+                        from,
+                        fornitore,
+                        aiResponse
+                );
+            }
+
+            case "NEED_INFO" -> {
+
+                String reply = aiResponse.getReply();
+
+                if (reply == null || reply.isBlank()) {
+
+                    reply =
+                            "Va bene. Puoi indicarmi anche "
+                            + "la prima data e l'orario in cui "
+                            + "potresti effettuare l'intervento?";
+                }
+
+                invioMessaggio(
+                        from,
+                        reply
+                );
+            }
+
+            default -> {
+
+                invioMessaggio(
+                        from,
+                        """
+                        Non sono sicura di aver capito.
+
+                        Puoi indicarmi se puoi prendere in carico l'intervento e, in caso affermativo, quando potresti intervenire?
+                        """
+                );
+            }
+        }
+    }
+    
+    private void gestisciAccettazioneFornitore(
+            String from,
+            Utente fornitore,
+            WhatsAppFornitoreAiResponse response) {
+
+        if (response.getTicketId() == null
+                || response.getDataIntervento() == null
+                || response.getDataIntervento().isBlank()) {
+
+            invioMessaggio(
+                    from,
+                    "Perfetto. Puoi indicarmi anche "
+                            + "la data e l'orario previsti "
+                            + "per l'intervento?"
+            );
+
+            return;
+        }
+
+        LocalDateTime dataIntervento;
+
+        try {
+
+            dataIntervento =
+                    LocalDateTime.parse(
+                            response.getDataIntervento()
+                    );
+
+        } catch (Exception e) {
+
+            invioMessaggio(
+                    from,
+                    "Ho capito che puoi prendere in carico "
+                            + "l'intervento, ma non sono riuscita "
+                            + "a interpretare la data. "
+                            + "Puoi indicarmela nuovamente?"
+            );
+
+            return;
+        }
+
+        boolean updated =
+                ticketDao.prendiInCaricoTicket(
+                        response.getTicketId(),
+                        fornitore.getId(),
+                        dataIntervento
+                );
+
+        if (!updated) {
+
+            invioMessaggio(
+                    from,
+                    "Non sono riuscita ad aggiornare "
+                            + "la segnalazione. Riprova tra poco."
+            );
+
+            return;
+        }
+
+        invioMessaggio(
+                from,
+                """
+                Perfetto ✅
+
+                Ho registrato la presa in carico della segnalazione #%d.
+
+                📅 Intervento previsto: %s
+
+                Grazie per la disponibilità.
+                """.formatted(
+                        response.getTicketId(),
+                        dataIntervento.format(
+                                DateTimeFormatter.ofPattern(
+                                        "dd/MM/yyyy 'alle' HH:mm"
+                                )
+                        )
+                )
+        );
+    }
+    
+    private void gestisciRifiutoFornitore(
+            String from,
+            Utente fornitore,
+            WhatsAppFornitoreAiResponse response) {
+
+        if (response.getTicketId() == null) {
+
+            invioMessaggio(
+                    from,
+                    "Ho capito che non puoi prendere in carico "
+                            + "l'intervento. Puoi indicarmi a quale "
+                            + "segnalazione ti riferisci?"
+            );
+
+            return;
+        }
+
+        /*
+         * QUI poi implementeremo:
+         *
+         * 1. salvataggio rifiuto fornitore;
+         * 2. ricerca altro fornitore compatibile;
+         * 3. invio automatico richiesta WhatsApp;
+         * 4. escalation fino alla presa in carico.
+         */
+
+        invioMessaggio(
+                from,
+                """
+                Va bene, grazie per avermi avvisata.
+
+                Ho registrato che non puoi prendere in carico la segnalazione #%d.
+
+                Provvederò a gestire la richiesta con un altro fornitore disponibile.
+                """.formatted(response.getTicketId())
+        );
     }
 
     private void gestisciSceltaTicket(String from,

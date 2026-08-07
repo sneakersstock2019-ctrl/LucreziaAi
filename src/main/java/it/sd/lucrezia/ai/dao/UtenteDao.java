@@ -90,4 +90,57 @@ public class UtenteDao {
             );
         }
     }
+    
+    public Utente findFornitoreByTelefono(String telefono) {
+
+        String sql = """
+            SELECT
+                u.id,
+                u.nome,
+                u.cognome,
+                u.email,
+                u.telefono,
+                u.ruolo
+            FROM utenti u
+            WHERE RIGHT(
+                      REGEXP_REPLACE(u.telefono, '[^0-9]', '', 'g'),
+                      10
+                  ) = RIGHT(
+                      REGEXP_REPLACE(?, '[^0-9]', '', 'g'),
+                      10
+                  )
+              AND u.ruolo = 'FORNITORE'
+            LIMIT 1
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, telefono);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+
+                    Utente utente = new Utente();
+
+                    utente.setId(rs.getLong("id"));
+                    utente.setNome(rs.getString("nome"));
+                    utente.setCognome(rs.getString("cognome"));
+                    utente.setEmail(rs.getString("email"));
+                    utente.setTelefono(rs.getString("telefono"));
+                    utente.setRuolo(rs.getString("ruolo"));
+
+                    return utente;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

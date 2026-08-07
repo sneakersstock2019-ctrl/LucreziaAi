@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -128,6 +129,83 @@ public class TicketDao {
         }
 
         return null;
+    }
+    
+    public List<Long> findTicketAssegnatiApertiByFornitore(
+            Long idFornitore) {
+
+        List<Long> result = new ArrayList<>();
+
+        String sql = """
+            SELECT t.id
+            FROM ticket t
+            JOIN stati_ticket st
+              ON st.id = t.id_stato
+            WHERE t.id_fornitore = ?
+              AND st.codice NOT IN ('RISOLTO', 'CHIUSO', 'ANNULLATO')
+            ORDER BY t.data_apertura DESC
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(1, idFornitore);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    result.add(rs.getLong("id"));
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+    
+    public boolean prendiInCaricoTicket(
+            Long idTicket,
+            Long idFornitore,
+            LocalDateTime dataInterventoPrevista) {
+
+        String sql = """
+            UPDATE ticket
+            SET id_stato = (
+                    SELECT id
+                    FROM stati_ticket
+                    WHERE codice = 'PRESO_IN_CARICO'
+                ),
+                data_presa_in_carico = CURRENT_TIMESTAMP,
+                data_intervento_prevista = ?,
+                data_ultimo_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND id_fornitore = ?
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setTimestamp(
+                    1,
+                    Timestamp.valueOf(dataInterventoPrevista)
+            );
+
+            ps.setLong(2, idTicket);
+            ps.setLong(3, idFornitore);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     private TicketStatusInfo mapTicketStatusInfo(ResultSet rs) throws Exception {

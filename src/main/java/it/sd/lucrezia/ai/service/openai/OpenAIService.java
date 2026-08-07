@@ -16,6 +16,7 @@ import it.sd.lucrezia.ai.bean.OpenAIRequest;
 import it.sd.lucrezia.ai.bean.OpenAIRequestMessage;
 import it.sd.lucrezia.ai.bean.OpenAIResponse;
 import it.sd.lucrezia.ai.bean.WhatsAppAiResponse;
+import it.sd.lucrezia.ai.bean.WhatsAppFornitoreAiResponse;
 
 @Service
 public class OpenAIService {
@@ -78,7 +79,117 @@ public class OpenAIService {
         }
     }
     
+    public WhatsAppFornitoreAiResponse askLucreziaFornitore(
+            List<OpenAIRequestMessage> messaggiOpenAIRequestMessage) {
+
+        OpenAIRequest openAIRequest = null;
+        HttpHeaders httpHeaders = null;
+        HttpEntity<OpenAIRequest> httpEntity = null;
+        ResponseEntity<OpenAIResponse> response = null;
+        String responseString = null;
+
+        try {
+
+            openAIRequest = new OpenAIRequest();
+            openAIRequest.setModel(OPENAI_MODEL);
+            openAIRequest.setMessages(messaggiOpenAIRequestMessage);
+
+            // Qui vogliamo interpretazione precisa, non creatività
+            openAIRequest.setTemperature(0.1);
+
+            httpHeaders = new HttpHeaders();
+            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+            httpHeaders.setBearerAuth(apiKey);
+
+            httpEntity = new HttpEntity<>(
+                    openAIRequest,
+                    httpHeaders
+            );
+
+            System.out.println(
+                    "Invoco Api OpenAI Fornitore (POST): "
+                            + OPENAI_API
+            );
+
+            response = restTemplate.postForEntity(
+                    OPENAI_API,
+                    httpEntity,
+                    OpenAIResponse.class
+            );
+
+            if (response.getBody() == null
+                    || response.getBody().getChoices() == null
+                    || response.getBody().getChoices().isEmpty()) {
+
+                throw new IllegalStateException(
+                        "Risposta OpenAI vuota"
+                );
+            }
+
+            responseString = response.getBody()
+                    .getChoices()
+                    .get(0)
+                    .getMessage()
+                    .getContent();
+
+            System.out.println("Response Api OpenAI Fornitore:");
+            System.out.println(responseString);
+
+            /*
+             * Nel caso il modello restituisca:
+             *
+             * ```json
+             * {...}
+             * ```
+             *
+             * ripuliamo i delimitatori markdown.
+             */
+            responseString =
+                    cleanJsonResponse(responseString);
+
+            return objectMapper.readValue(
+                    responseString,
+                    WhatsAppFornitoreAiResponse.class
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            WhatsAppFornitoreAiResponse error =
+                    new WhatsAppFornitoreAiResponse();
+
+            error.setAction("UNCLEAR");
+            error.setComplete(false);
+            error.setReply(
+                    "Non sono riuscita a interpretare la risposta."
+            );
+
+            return error;
+        }
+    }
     
-    
-    
+    private String cleanJsonResponse(String response) {
+
+        if (response == null) {
+            return "";
+        }
+
+        response = response.trim();
+
+        if (response.startsWith("```json")) {
+            response = response.substring(7);
+        } else if (response.startsWith("```")) {
+            response = response.substring(3);
+        }
+
+        if (response.endsWith("```")) {
+            response = response.substring(
+                    0,
+                    response.length() - 3
+            );
+        }
+
+        return response.trim();
+    }
 }
