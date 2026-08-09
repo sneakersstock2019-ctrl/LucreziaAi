@@ -226,8 +226,7 @@ public class ConversationInitializationService {
         }
 
         return saluto + " " + nome
-                + ", sono Lucrezia, l'assistente del condominio "
-                + safe(utente.getNomeCondominio())
+                + ", sono Lucrezia, l'assistente dell'amministratore. "
                 + ". Come posso aiutarti?";
     }
     
