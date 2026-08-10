@@ -225,9 +225,7 @@ public class ConversationInitializationService {
                     + "oppure aprirne una nuova?";
         }
 
-        return saluto + " " + nome
-                + ", sono Lucrezia, l'assistente dell'amministratore. "
-                + ". Come posso aiutarti?";
+        return saluto + " " + nome + ", sono Lucrezia, l'assistente dell'amministratore. Come posso aiutarti?";
     }
     
     private String buildSalutoOrario() {
