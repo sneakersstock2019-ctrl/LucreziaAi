@@ -7,11 +7,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import it.sd.lucrezia.ai.bean.FindRegisteredUserRequest;
+import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
 import it.sd.lucrezia.ai.bean.RetryOutboundResult;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
@@ -19,6 +22,7 @@ import it.sd.lucrezia.ai.bean.ToolResult;
 import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
+import it.sd.lucrezia.ai.service.voice.UnknownUserService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -31,6 +35,7 @@ public class ElevenLabsToolController {
     private final TicketDao ticketDao;
     private final TelefonataDao telefonataDao;
     private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
+    private final UnknownUserService unknownUserService;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -605,6 +610,34 @@ public class ElevenLabsToolController {
                         "stato",
                         "COMPLETATA"
                 )
+        );
+    }
+    
+    @PostMapping("/findRegisteredUser")
+    public ResponseEntity<FindRegisteredUserResponse> findRegisteredUser(
+            @RequestBody FindRegisteredUserRequest request) {
+
+        System.out.println(
+                "TOOL findRegisteredUser"
+                + " - idTelefonata="
+                + request.getIdTelefonata()
+                + " request="
+                + request
+        );
+
+        FindRegisteredUserResponse response =
+                unknownUserService.findRegisteredUser(
+                        request
+                );
+
+        System.out.println(
+                "TOOL findRegisteredUser"
+                + " - response="
+                + response
+        );
+
+        return ResponseEntity.ok(
+                response
         );
     }
 

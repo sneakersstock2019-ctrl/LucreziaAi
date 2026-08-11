@@ -22,6 +22,9 @@ public class Utente {
     private Long idCondominio;
     private String nomeCondominio;
     
+    private String interno;
+    private String indirizzoCondominio;
+    
     private String codiceFiscaleCondominio;
     private String elevenlabsBranchId;
 
