@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import it.sd.lucrezia.ai.bean.Utente;
@@ -19,6 +20,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ConversationInitializationService {
+
+    @Value("${voice.elevenlabs.utente-sconosciuto-branch-id}")
+    private String utenteSconosciutoBranchId;
 
     private final UtenteDao utenteDao;
     private final TicketDao ticketDao;
@@ -42,13 +46,38 @@ public class ConversationInitializationService {
             );
         }
 
-        Utente utente = utenteDao.findCondominoByTelefono(telefono);
+        Utente utente =
+                utenteDao.findCondominoByTelefono(telefono);
+
+        /*
+         * ============================================================
+         * NUMERO NON CENSITO
+         * ============================================================
+         */
         if (utente == null) {
-            throw new IllegalStateException(
-                    "Nessun condomino associato al numero "
-                            + telefono
-            );
+
+        	//TODO
+        	if(telefono.endsWith("3492123304")) {
+        		return initializeUtenteSconosciuto(
+        				telefono,
+        				numeroLucrezia,
+        				normalizedCallSid,
+        				conversationId,
+        				canale
+        				);
+        	} else {
+                throw new IllegalStateException(
+                        "Nessun condomino associato al numero "
+                                + telefono
+                );
+        	}
         }
+
+        /*
+         * ============================================================
+         * UTENTE CONOSCIUTO
+         * ============================================================
+         */
 
         int ticketAperti =
                 ticketDao.countTicketApertiByUtente(
@@ -158,36 +187,27 @@ public class ConversationInitializationService {
                 "branch_condominio",
                 buildBranchName(utente)
         );
-        
+
         dynamicVariables.put(
                 "branch_id",
                 safe(utente.getElevenlabsBranchId())
         );
-        
-        LocalDateTime dataOraChiamata =
-                LocalDateTime.now(ZoneId.of("Europe/Rome"));
 
         dynamicVariables.put(
-                "orario_chiamata",
-                dataOraChiamata.format(
-                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-                )
+                "utente_riconosciuto",
+                true
         );
-        
-        dynamicVariables.put(
-                "saluto_orario",
-                buildSalutoOrario()
-        );
+
+        aggiungiVariabiliDataOra(dynamicVariables);
 
         CallLogger.info(
                 normalizedCallSid,
-                "CONVERSATION INIT - canale=" + canale
+                "CONVERSATION INIT"
+                        + " - canale=" + canale
                         + " idTelefonata=" + idTelefonata
                         + " idUtente=" + utente.getId()
-                        + " idCondominio="
-                        + utente.getIdCondominio()
-                        + " branchId="
-                        + utente.getElevenlabsBranchId()
+                        + " idCondominio=" + utente.getIdCondominio()
+                        + " branchId=" + utente.getElevenlabsBranchId()
         );
 
         return new VoiceConversationContext(
@@ -200,6 +220,160 @@ public class ConversationInitializationService {
         );
     }
 
+    /*
+     * ================================================================
+     * UTENTE SCONOSCIUTO
+     * ================================================================
+     */
+
+    private VoiceConversationContext initializeUtenteSconosciuto(
+            String telefono,
+            String numeroLucrezia,
+            String callSid,
+            String conversationId,
+            String canale
+    ) {
+
+        /*
+         * Registriamo comunque la telefonata.
+         *
+         * id_utente e id_condominio sono NULL perché
+         * non abbiamo ancora identificato la persona.
+         */
+        Long idTelefonata =
+                telefonataDao.insertTelefonata(
+                        callSid,
+                        telefono,
+                        null,
+                        null
+                );
+
+        if (idTelefonata == null) {
+            throw new IllegalStateException(
+                    "Impossibile registrare la telefonata "
+                            + callSid
+            );
+        }
+
+        if (conversationId != null
+                && !conversationId.isBlank()) {
+
+            telefonataDao.updateElevenLabsConversationId(
+                    idTelefonata,
+                    conversationId,
+                    callSid
+            );
+        }
+
+        String firstMessage =
+                buildFirstMessageUtenteSconosciuto();
+
+        Map<String, Object> dynamicVariables =
+                new LinkedHashMap<>();
+
+        dynamicVariables.put(
+                "call_sid",
+                callSid
+        );
+
+        dynamicVariables.put(
+                "conversation_id",
+                safe(conversationId)
+        );
+
+        dynamicVariables.put(
+                "id_telefonata",
+                String.valueOf(idTelefonata)
+        );
+
+        /*
+         * Numero dal quale sta chiamando la nuova persona.
+         */
+        dynamicVariables.put(
+                "telefono_sconosciuto",
+                telefono
+        );
+
+        dynamicVariables.put(
+                "telefono",
+                telefono
+        );
+
+        dynamicVariables.put(
+                "numero_lucrezia",
+                numeroLucrezia
+        );
+
+        dynamicVariables.put(
+                "canale",
+                safe(canale)
+        );
+
+        dynamicVariables.put(
+                "first_message",
+                firstMessage
+        );
+
+        dynamicVariables.put(
+                "branch_id",
+                utenteSconosciutoBranchId
+        );
+
+        dynamicVariables.put(
+                "branch_condominio",
+                "UTENTE_SCONOSCIUTO"
+        );
+
+        dynamicVariables.put(
+                "utente_riconosciuto",
+                false
+        );
+
+        /*
+         * Partiamo da zero.
+         * In seguito potremo passarla ai tool.
+         */
+        dynamicVariables.put(
+                "tentativi_identificazione",
+                0
+        );
+
+        aggiungiVariabiliDataOra(dynamicVariables);
+
+        CallLogger.info(
+                callSid,
+                "CONVERSATION INIT UTENTE SCONOSCIUTO"
+                        + " - canale=" + canale
+                        + " idTelefonata=" + idTelefonata
+                        + " telefono=" + telefono
+                        + " branchId=" + utenteSconosciutoBranchId
+        );
+
+        return new VoiceConversationContext(
+                idTelefonata,
+                null,
+                0,
+                utenteSconosciutoBranchId,
+                firstMessage,
+                dynamicVariables
+        );
+    }
+
+    private String buildFirstMessageUtenteSconosciuto() {
+
+        return buildSalutoOrario()
+                + ", sono Lucrezia. "
+                + "Il numero dal quale stai chiamando non risulta ancora registrato, "
+                + "ma posso comunque aiutarti. "
+                + "Prima di tutto, puoi dirmi il tuo nome e cognome?";
+    }
+
+    /*
+     * ================================================================
+     * FIRST MESSAGE UTENTE CONOSCIUTO
+     * ================================================================
+     */
+
     private String buildFirstMessage(
             Utente utente,
             int ticketAperti
@@ -209,6 +383,7 @@ public class ConversationInitializationService {
         String saluto = buildSalutoOrario();
 
         if (ticketAperti == 1) {
+
             return saluto + " " + nome
                     + ", sono Lucrezia. "
                     + "Vedo che hai una segnalazione aperta. "
@@ -217,6 +392,7 @@ public class ConversationInitializationService {
         }
 
         if (ticketAperti > 1) {
+
             return saluto + " " + nome
                     + ", sono Lucrezia. "
                     + "Vedo che hai " + ticketAperti
@@ -225,20 +401,49 @@ public class ConversationInitializationService {
                     + "oppure aprirne una nuova?";
         }
 
-        return saluto + " " + nome + ", sono Lucrezia, l'assistente dell'amministratore. Come posso aiutarti?";
+        return saluto + " " + nome
+                + ", sono Lucrezia, "
+                + "l'assistente dell'amministratore "
+                + "per gli interventi condominiali. "
+                + "Come posso aiutarti?";
     }
-    
+
+    /*
+     * ================================================================
+     * DATA / ORA
+     * ================================================================
+     */
+
+    private void aggiungiVariabiliDataOra(
+            Map<String, Object> dynamicVariables) {
+
+        LocalDateTime dataOraChiamata =
+                LocalDateTime.now(
+                        ZoneId.of("Europe/Rome")
+                );
+
+        dynamicVariables.put(
+                "orario_chiamata",
+                dataOraChiamata.format(
+                        DateTimeFormatter.ofPattern(
+                                "dd/MM/yyyy HH:mm"
+                        )
+                )
+        );
+
+        dynamicVariables.put(
+                "saluto_orario",
+                buildSalutoOrario()
+        );
+    }
+
     private String buildSalutoOrario() {
 
-        int ora = LocalDateTime.now(
-                ZoneId.of("Europe/Rome")
-        ).getHour();
+        int ora =
+                LocalDateTime.now(
+                        ZoneId.of("Europe/Rome")
+                ).getHour();
 
-        /*
-         * Per una telefonata:
-         * - dalle 05:00 alle 17:59 -> Buongiorno
-         * - dalle 18:00 alle 04:59 -> Buonasera
-         */
         if (ora >= 5 && ora < 18) {
             return "Buongiorno";
         }
@@ -246,13 +451,23 @@ public class ConversationInitializationService {
         return "Buonasera";
     }
 
+    /*
+     * ================================================================
+     * UTILITY
+     * ================================================================
+     */
+
     private String buildBranchName(Utente utente) {
 
         String codiceFiscale =
-                safe(utente.getCodiceFiscaleCondominio());
+                safe(
+                        utente.getCodiceFiscaleCondominio()
+                );
 
         String nomeCondominio =
-                safe(utente.getNomeCondominio());
+                safe(
+                        utente.getNomeCondominio()
+                );
 
         return codiceFiscale
                 + " - "
@@ -265,16 +480,24 @@ public class ConversationInitializationService {
             return "";
         }
 
-        phone = phone.replaceAll("[^0-9]", "");
+        phone = phone.replaceAll(
+                "[^0-9]",
+                ""
+        );
 
         if (phone.length() > 10) {
-            phone = phone.substring(phone.length() - 10);
+
+            phone = phone.substring(
+                    phone.length() - 10
+            );
         }
 
         return phone;
     }
 
     private String safe(String value) {
-        return value == null ? "" : value.trim();
+        return value == null
+                ? ""
+                : value.trim();
     }
 }
