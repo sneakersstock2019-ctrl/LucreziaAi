@@ -57,10 +57,11 @@ public class ElevenLabsWebhookController {
             @RequestBody
             ElevenLabsPreCallRequest request
     ) {
-    	System.out.println("@PostMapping(\"/pre-call\") con i seguenti parametri:");
-    	System.out.println("X-Lucrezia-Token: " + receivedToken);
-    	System.out.println("@RequestBody: " + request);
-    	
+
+        System.out.println("@PostMapping(\"/pre-call\") con i seguenti parametri:");
+        System.out.println("X-Lucrezia-Token: " + receivedToken);
+        System.out.println("@RequestBody: " + request);
+
         if (!tokenMatches(receivedToken)) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -80,67 +81,137 @@ public class ElevenLabsWebhookController {
                             request.getConversationId(),
                             "SIP"
                     );
+
             System.out.println("Recuperato Contesto: " + context);
 
-            if (context.branchId() == null || context.branchId().isBlank()) {
+            /*
+             * Il branch deve esserci sempre,
+             * sia per utente conosciuto sia per utente sconosciuto.
+             */
+            if (context.branchId() == null
+                    || context.branchId().isBlank()) {
+
+                String descrizioneContesto;
+
+                if (context.utente() != null) {
+
+                    descrizioneContesto =
+                            "per il condominio "
+                            + context.utente().getNomeCondominio();
+
+                } else {
+
+                    descrizioneContesto =
+                            "per utente sconosciuto";
+                }
+
                 throw new IllegalStateException(
                         "Branch ElevenLabs non configurato "
-                                + "per il condominio "
-                                + context.utente()
-                                        .getNomeCondominio()
+                                + descrizioneContesto
                 );
             }
 
-            Map<String, Object> agentOverride = new LinkedHashMap<>();
+            /*
+             * Override del first message.
+             */
+            Map<String, Object> agentOverride =
+                    new LinkedHashMap<>();
+
             agentOverride.put(
                     "first_message",
                     context.firstMessage()
             );
 
-            Map<String, Object> configOverride = new LinkedHashMap<>();
+            Map<String, Object> configOverride =
+                    new LinkedHashMap<>();
+
             configOverride.put(
                     "agent",
                     agentOverride
             );
 
-            Map<String, Object> response = new LinkedHashMap<>();
+            /*
+             * Costruzione risposta ElevenLabs.
+             */
+            Map<String, Object> response =
+                    new LinkedHashMap<>();
+
             response.put(
                     "type",
                     "conversation_initiation_client_data"
             );
+
+            /*
+             * user_id:
+             *
+             * - utente conosciuto -> id DB
+             * - utente sconosciuto -> identificativo temporaneo
+             */
+            String userId;
+
+            if (context.utente() != null) {
+
+                userId =
+                        String.valueOf(
+                                context.utente().getId()
+                        );
+
+            } else {
+
+                String callerId =
+                        request.getCallerId();
+
+                if (callerId == null
+                        || callerId.isBlank()) {
+
+                    callerId = "UNKNOWN";
+
+                } else {
+
+                    callerId =
+                            callerId.replaceAll(
+                                    "[^0-9]",
+                                    ""
+                            );
+                }
+
+                userId =
+                        "UNKNOWN_" + callerId;
+            }
+
             response.put(
                     "user_id",
-                    String.valueOf(
-                            context.utente().getId()
-                    )
+                    userId
             );
+
             response.put(
                     "branch_id",
                     context.branchId()
             );
+
             response.put(
                     "environment",
                     "production"
             );
+
             response.put(
                     "dynamic_variables",
                     context.dynamicVariables()
             );
+
             response.put(
                     "conversation_config_override",
                     configOverride
             );
 
             System.out.println("Response: " + response);
+
             return ResponseEntity.ok(response);
 
         } catch (IllegalStateException e) {
 
-            /*
-             * Non restituiamo un payload incompleto:
-             * ElevenLabs non riuscirebbe comunque ad inizializzare
-             * la conversazione.
-             */
+            e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of(
@@ -149,6 +220,8 @@ public class ElevenLabsWebhookController {
                     ));
 
         } catch (Exception e) {
+
+            e.printStackTrace();
 
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
