@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import it.sd.lucrezia.ai.bean.CreatePendingTicketRequest;
+import it.sd.lucrezia.ai.bean.CreatePendingTicketResponse;
 import it.sd.lucrezia.ai.bean.FindRegisteredUserRequest;
 import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
 import it.sd.lucrezia.ai.bean.ManageUserApprovalRequest;
@@ -28,6 +30,7 @@ import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.service.voice.UnknownUserApprovalService;
 import it.sd.lucrezia.ai.service.voice.UnknownUserService;
+import it.sd.lucrezia.ai.service.voice.UnknownUserTicketService;
 import it.sd.lucrezia.ai.service.voice.UserApprovalService;
 import lombok.RequiredArgsConstructor;
 
@@ -44,6 +47,7 @@ public class ElevenLabsToolController {
     private final UnknownUserService unknownUserService;
     private final UserApprovalService userApprovalService;
     private final UnknownUserApprovalService unknownUserApprovalService;
+    private final UnknownUserTicketService unknownUserTicketService;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -696,7 +700,33 @@ public class ElevenLabsToolController {
         return ResponseEntity.ok(response);
     }
     
+    @PostMapping("/createPendingTicket")
+    public ResponseEntity<CreatePendingTicketResponse>
+            createPendingTicket(
+                    @RequestBody
+                    CreatePendingTicketRequest request) {
 
+        System.out.println(
+                "TOOL createPendingTicket - request="
+                        + request
+        );
+
+        CreatePendingTicketResponse response =
+                unknownUserTicketService
+                        .createPendingTicket(
+                                request
+                        );
+
+        System.out.println(
+                "TOOL createPendingTicket - response="
+                        + response
+        );
+
+        return ResponseEntity.ok(
+                response
+        );
+    }
+    
     private ToolResult<Map<String, Object>> missingField(String field) {
         return ToolResult.error(
                 "KO",

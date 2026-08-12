@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import it.sd.lucrezia.ai.bean.ElevenLabsSipCallResult;
 import it.sd.lucrezia.ai.bean.TelefonataOutbound;
+import it.sd.lucrezia.ai.dao.RichiestaAssociazioneUtenteDao;
 import it.sd.lucrezia.ai.dao.TelefonataOutboundDao;
 import it.sd.lucrezia.ai.service.elevenlabs.ElevenLabsService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class TelefonataOutboundJob {
 
     private final TelefonataOutboundDao telefonataOutboundDao;
+    private final RichiestaAssociazioneUtenteDao richiestaAssociazioneUtenteDao;
     private final ElevenLabsService elevenLabsService;
 
     @Scheduled(
@@ -101,6 +103,32 @@ public class TelefonataOutboundJob {
                             chiamata
                     );
 
+            if ("APPROVAZIONE_UTENTE".equals(
+                    chiamata.getTipoChiamata())) {
+
+                boolean ancoraInAttesa =
+                        richiestaAssociazioneUtenteDao
+                                .isInAttesa(
+                                        chiamata.getIdRichiestaAssociazione()
+                                );
+
+                if (!ancoraInAttesa) {
+
+                    telefonataOutboundDao
+                            .annullaApprovazioneNonAvviata(
+                                    chiamata.getIdRichiestaAssociazione()
+                            );
+
+                    System.out.println(
+                            "Chiamata approvazione non eseguita: "
+                                    + "richiesta già gestita. idRichiesta="
+                                    + chiamata.getIdRichiestaAssociazione()
+                    );
+
+                    return;
+                }
+            }
+            
             ElevenLabsSipCallResult result =
                     elevenLabsService.avviaChiamata(
                             chiamata.getTelefonoDestinatario(),

@@ -366,22 +366,48 @@ public class ElevenLabsWebhookController {
                 data.path("tool_names").size();
 
         /*
-         * Prima verifichiamo se è OUTBOUND.
+         * ============================================================
+         * OUTBOUND
+         * ============================================================
          */
+
         Long idTelefonataOutbound =
-                getLong(
-                        dynamicVariables
-                                .path("telefonata_outbound_id")
-                                .asText()
-                );
+                telefonataOutboundDao
+                        .findIdByConversationId(
+                                conversationId
+                        );
+
+        /*
+         * Fallback per compatibilità con il vecchio giro.
+         */
+        if (idTelefonataOutbound == null) {
+
+            idTelefonataOutbound =
+                    getLong(
+                            dynamicVariables
+                                    .path("telefonata_outbound_id")
+                                    .asText()
+                    );
+        }
 
         if (idTelefonataOutbound != null) {
 
-            String trascrizione =
-                    buildTranscript(
-                            data.path("transcript"),
-                            "Fornitore"
-                    );
+        	String tipoChiamata =
+        	        telefonataOutboundDao
+        	                .findTipoChiamataByConversationId(
+        	                        conversationId
+        	                );
+
+        	String nomeInterlocutore =
+        	        getNomeInterlocutoreOutbound(
+        	                tipoChiamata
+        	        );
+
+        	String trascrizione =
+        	        buildTranscript(
+        	                data.path("transcript"),
+        	                nomeInterlocutore
+        	        );
 
             telefonataOutboundDao.completaPostCall(
                     idTelefonataOutbound,
@@ -393,7 +419,8 @@ public class ElevenLabsWebhookController {
 
             System.out.println(
                     "ELEVENLABS OUTBOUND TRASCRIZIONE SALVATA"
-                            + " - id=" + idTelefonataOutbound
+                            + " - id="
+                            + idTelefonataOutbound
                             + " - conversationId="
                             + conversationId
             );
@@ -402,8 +429,11 @@ public class ElevenLabsWebhookController {
         }
 
         /*
-         * Altrimenti manteniamo la gestione INBOUND esistente.
+         * ============================================================
+         * INBOUND
+         * ============================================================
          */
+
         Long idTelefonata =
                 getLong(
                         dynamicVariables
@@ -608,6 +638,28 @@ public class ElevenLabsWebhookController {
                 .collect(
                         Collectors.joining("\n\n")
                 );
+    }
+    
+    private String getNomeInterlocutoreOutbound(
+            String tipoChiamata) {
+
+        if (tipoChiamata == null
+                || tipoChiamata.isBlank()) {
+
+            return "Interlocutore";
+        }
+
+        return switch (tipoChiamata) {
+
+            case "FORNITORE" ->
+                    "Fornitore";
+
+            case "APPROVAZIONE_UTENTE" ->
+                    "Condomino";
+
+            default ->
+                    "Interlocutore";
+        };
     }
 
     private boolean isValidTranscriptMessage(String message) {

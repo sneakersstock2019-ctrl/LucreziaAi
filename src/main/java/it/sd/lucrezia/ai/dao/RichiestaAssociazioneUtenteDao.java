@@ -3,6 +3,7 @@ package it.sd.lucrezia.ai.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
 
 import javax.sql.DataSource;
 
@@ -258,7 +259,7 @@ public class RichiestaAssociazioneUtenteDao {
         return false;
     }
     
-    public boolean approvaERegistraNuovoUtente(
+    public Long approvaERegistraNuovoUtente(
             RichiestaAssociazioneUtente richiesta,
             Utente utenteRegistrato,
             UtenteDao utenteDao) {
@@ -271,6 +272,23 @@ public class RichiestaAssociazioneUtenteDao {
               AND stato = 'IN_ATTESA'
             """;
 
+        String sqlSbloccaTicket = """
+            UPDATE ticket
+            SET id_utente_apertura = ?,
+                id_stato = (
+                    SELECT id
+                    FROM stati_ticket
+                    WHERE codice = 'APERTO'
+                ),
+                data_ultimo_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id_richiesta_associazione = ?
+              AND id_stato = (
+                    SELECT id
+                    FROM stati_ticket
+                    WHERE codice = 'IN_ATTESA_APPROVAZIONE'
+                )
+            """;
+
         try (
                 Connection conn = dataSource.getConnection()
         ) {
@@ -280,18 +298,26 @@ public class RichiestaAssociazioneUtenteDao {
             try {
 
                 /*
-                 * 1. Controlliamo che il numero non sia già registrato.
+                 * ========================================================
+                 * 1. Verifica numero già registrato
+                 * ========================================================
                  */
-            	Utente esistente =
-            	        utenteDao.findByTelefono(
-            	                conn,
-            	                richiesta.getTelefonoNuovo()
-            	        );
+
+                Utente esistente =
+                        utenteDao.findByTelefono(
+                                conn,
+                                richiesta.getTelefonoNuovo()
+                        );
 
                 if (esistente != null) {
 
-                    conn.rollback();
-
+                    /*
+                     * Caso interessante:
+                     * se il numero esiste già, non creiamo un duplicato.
+                     *
+                     * Per ora consideriamolo errore perché in un normale
+                     * flusso di approvazione non dovrebbe succedere.
+                     */
                     throw new IllegalStateException(
                             "Il numero "
                                     + richiesta.getTelefonoNuovo()
@@ -300,11 +326,14 @@ public class RichiestaAssociazioneUtenteDao {
                 }
 
                 /*
-                 * 2. Creiamo il nuovo condomino.
+                 * ========================================================
+                 * 2. Creazione nuovo condomino
+                 * ========================================================
                  *
-                 * L'interno viene ereditato dall'utente
-                 * registrato che ha autorizzato la richiesta.
+                 * Il nuovo utente eredita l'interno dell'utente
+                 * che lo ha autorizzato.
                  */
+
                 Long idNuovoUtente =
                         utenteDao.insertCondomino(
                                 conn,
@@ -316,16 +345,17 @@ public class RichiestaAssociazioneUtenteDao {
 
                 if (idNuovoUtente == null) {
 
-                    conn.rollback();
-
                     throw new IllegalStateException(
                             "Impossibile creare il nuovo utente."
                     );
                 }
 
                 /*
-                 * 3. Associazione allo stesso condominio.
+                 * ========================================================
+                 * 3. Associazione allo stesso condominio
+                 * ========================================================
                  */
+
                 utenteDao.associaUtenteCondominio(
                         conn,
                         idNuovoUtente,
@@ -333,8 +363,11 @@ public class RichiestaAssociazioneUtenteDao {
                 );
 
                 /*
-                 * 4. Approviamo la richiesta.
+                 * ========================================================
+                 * 4. Approvazione richiesta
+                 * ========================================================
                  */
+
                 try (
                         PreparedStatement ps =
                                 conn.prepareStatement(
@@ -350,23 +383,62 @@ public class RichiestaAssociazioneUtenteDao {
                     int updated =
                             ps.executeUpdate();
 
-                    if (updated == 0) {
-
-                        conn.rollback();
+                    if (updated != 1) {
 
                         throw new IllegalStateException(
-                                "La richiesta non è più in attesa."
+                                "La richiesta non è più in attesa "
+                                        + "oppure non esiste."
                         );
                     }
                 }
 
+                /*
+                 * ========================================================
+                 * 5. Sblocco eventuali ticket pending
+                 * ========================================================
+                 */
+
+                int ticketSbloccati;
+
+                try (
+                        PreparedStatement ps =
+                                conn.prepareStatement(
+                                        sqlSbloccaTicket
+                                )
+                ) {
+
+                    ps.setLong(
+                            1,
+                            idNuovoUtente
+                    );
+
+                    ps.setLong(
+                            2,
+                            richiesta.getId()
+                    );
+
+                    ticketSbloccati =
+                            ps.executeUpdate();
+                }
+
+                System.out.println(
+                        "APPROVAZIONE UTENTE"
+                                + " - idRichiesta="
+                                + richiesta.getId()
+                                + " idNuovoUtente="
+                                + idNuovoUtente
+                                + " ticketSbloccati="
+                                + ticketSbloccati
+                );
+
                 conn.commit();
 
-                return true;
+                return idNuovoUtente;
 
             } catch (Exception e) {
 
                 conn.rollback();
+
                 throw e;
 
             } finally {
@@ -376,8 +448,161 @@ public class RichiestaAssociazioneUtenteDao {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
-            return false;
+            throw new RuntimeException(
+                    "Errore approvazione richiesta "
+                            + richiesta.getId(),
+                    e
+            );
         }
+    }
+    
+    public boolean isInAttesa(
+            Long idRichiesta) {
+
+        String sql = """
+            SELECT 1
+            FROM richieste_associazione_utente
+            WHERE id = ?
+              AND stato = 'IN_ATTESA'
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(
+                    1,
+                    idRichiesta
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore verifica richiesta associazione "
+                            + idRichiesta,
+                    e
+            );
+        }
+    }
+    
+    public RichiestaAssociazioneUtente findByIdTelefonata(
+            Long idTelefonata) {
+
+        if (idTelefonata == null) {
+            return null;
+        }
+
+        String sql = """
+            SELECT
+                id,
+                telefono_nuovo,
+                nome_nuovo,
+                cognome_nuovo,
+                id_utente_registrato,
+                id_condominio,
+                id_telefonata,
+                stato,
+                data_creazione,
+                data_risposta
+            FROM richieste_associazione_utente
+            WHERE id_telefonata = ?
+            ORDER BY data_creazione DESC
+            LIMIT 1
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(
+                    1,
+                    idTelefonata
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+
+                    RichiestaAssociazioneUtente richiesta =
+                            new RichiestaAssociazioneUtente();
+
+                    richiesta.setId(
+                            rs.getLong("id")
+                    );
+
+                    richiesta.setTelefonoNuovo(
+                            rs.getString("telefono_nuovo")
+                    );
+
+                    richiesta.setNomeNuovo(
+                            rs.getString("nome_nuovo")
+                    );
+
+                    richiesta.setCognomeNuovo(
+                            rs.getString("cognome_nuovo")
+                    );
+
+                    richiesta.setIdUtenteRegistrato(
+                            rs.getLong("id_utente_registrato")
+                    );
+
+                    richiesta.setIdCondominio(
+                            rs.getLong("id_condominio")
+                    );
+
+                    richiesta.setIdTelefonata(
+                            rs.getObject(
+                                    "id_telefonata",
+                                    Long.class
+                            )
+                    );
+
+                    richiesta.setStato(
+                            rs.getString("stato")
+                    );
+
+                    Timestamp dataCreazione =
+                            rs.getTimestamp(
+                                    "data_creazione"
+                            );
+
+                    if (dataCreazione != null) {
+                        richiesta.setDataCreazione(
+                                dataCreazione.toLocalDateTime()
+                        );
+                    }
+
+                    Timestamp dataRisposta =
+                            rs.getTimestamp(
+                                    "data_risposta"
+                            );
+
+                    if (dataRisposta != null) {
+                        richiesta.setDataRisposta(
+                                dataRisposta.toLocalDateTime()
+                        );
+                    }
+
+                    return richiesta;
+                }
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore ricerca richiesta associazione "
+                            + "per idTelefonata="
+                            + idTelefonata,
+                    e
+            );
+        }
+
+        return null;
     }
 }

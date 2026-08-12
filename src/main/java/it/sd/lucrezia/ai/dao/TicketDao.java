@@ -327,6 +327,123 @@ public class TicketDao {
         return 0;
     }
 
+    public Long insertPendingTicket(
+            Long idCondominio,
+            Long idRichiestaAssociazione,
+            String categoria,
+            String priorita,
+            String canale,
+            String area,
+            String descrizione) {
+
+        String sql = """
+            INSERT INTO ticket (
+                id_condominio,
+                id_utente_apertura,
+                id_richiesta_associazione,
+                id_stato,
+                categoria,
+                priorita,
+                canale,
+                descrizione,
+                data_ultimo_aggiornamento
+            )
+            VALUES (
+                ?,
+                NULL,
+                ?,
+                (
+                    SELECT id
+                    FROM stati_ticket
+                    WHERE codice = 'IN_ATTESA_APPROVAZIONE'
+                ),
+                ?,
+                ?,
+                ?,
+                ?,
+                CURRENT_TIMESTAMP
+            )
+            RETURNING id
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            String descrizioneCompleta =
+                    descrizione;
+
+            if (area != null && !area.isBlank()) {
+
+                descrizioneCompleta =
+                        descrizione
+                        + " Area: "
+                        + area
+                        + ".";
+            }
+
+            ps.setLong(
+                    1,
+                    idCondominio
+            );
+
+            ps.setLong(
+                    2,
+                    idRichiestaAssociazione
+            );
+
+            ps.setString(
+                    3,
+                    categoria
+            );
+
+            ps.setString(
+                    4,
+                    priorita
+            );
+
+            ps.setString(
+                    5,
+                    canale
+            );
+
+            ps.setString(
+                    6,
+                    descrizioneCompleta
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+
+                    Long idTicket =
+                            rs.getLong("id");
+
+                    /*
+                     * Lo storico deve indicare chiaramente
+                     * perché non è ancora operativo.
+                     */
+                    insertStorico(
+                            conn,
+                            idTicket,
+                            "IN_ATTESA_APPROVAZIONE",
+                            null,
+                            "Segnalazione aperta da numero non ancora autorizzato"
+                    );
+
+                    return idTicket;
+                }
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+    
     private void insertStorico(Connection conn,
                                Long idTicket,
                                String codiceStato,

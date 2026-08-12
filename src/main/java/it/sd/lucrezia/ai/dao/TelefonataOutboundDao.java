@@ -734,6 +734,147 @@ public class TelefonataOutboundDao {
         return null;
     }
     
+    public void annullaApprovazioneNonAvviata(
+            Long idRichiestaAssociazione) {
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET stato = 'ANNULLATA',
+                esito = 'RICHIESTA_GIA_GESTITA',
+                motivo_chiusura = 'APPROVAZIONE_ALTRO_CANALE',
+                data_fine = CURRENT_TIMESTAMP,
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id_richiesta_associazione = ?
+              AND tipo_chiamata = 'APPROVAZIONE_UTENTE'
+              AND stato IN (
+                  'DA_AVVIARE',
+                  'RICHIAMATA_PROGRAMMATA',
+                  'IN_AVVIO'
+              )
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(
+                    1,
+                    idRichiestaAssociazione
+            );
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore annullamento outbound approvazione "
+                            + idRichiestaAssociazione,
+                    e
+            );
+        }
+    }
+    
+    public void completaApprovazioneUtente(
+            Long idRichiestaAssociazione,
+            String esito) {
+
+        String sql = """
+            UPDATE telefonata_outbound
+            SET stato = 'COMPLETATA',
+                esito = ?,
+                motivo_chiusura = ?,
+                data_fine = COALESCE(
+                    data_fine,
+                    CURRENT_TIMESTAMP
+                ),
+                data_aggiornamento = CURRENT_TIMESTAMP
+            WHERE id_richiesta_associazione = ?
+              AND tipo_chiamata = 'APPROVAZIONE_UTENTE'
+              AND stato IN (
+                  'IN_CORSO'
+              )
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, esito);
+
+            ps.setString(
+                    2,
+                    "APPROVA".equals(esito)
+                            ? "APPROVAZIONE_UTENTE"
+                            : "RIFIUTO_UTENTE"
+            );
+
+            ps.setLong(
+                    3,
+                    idRichiestaAssociazione
+            );
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore chiusura telefonata outbound "
+                            + "per richiesta associazione "
+                            + idRichiestaAssociazione,
+                    e
+            );
+        }
+    }
+    
+    public String findTipoChiamataByConversationId(
+            String conversationId) {
+
+        if (conversationId == null
+                || conversationId.isBlank()) {
+
+            return null;
+        }
+
+        String sql = """
+            SELECT tipo_chiamata
+            FROM telefonata_outbound
+            WHERE conversation_id = ?
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setString(
+                    1,
+                    conversationId
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    return rs.getString(
+                            "tipo_chiamata"
+                    );
+                }
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore ricerca tipo chiamata outbound "
+                            + "per conversationId="
+                            + conversationId,
+                    e
+            );
+        }
+
+        return null;
+    }
+    
     private Long getNullableLong(
             ResultSet rs,
             String columnName) throws SQLException {

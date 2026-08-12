@@ -7,6 +7,7 @@ import it.sd.lucrezia.ai.bean.ManageUserApprovalResponse;
 import it.sd.lucrezia.ai.bean.RichiestaAssociazioneUtente;
 import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.dao.RichiestaAssociazioneUtenteDao;
+import it.sd.lucrezia.ai.dao.TelefonataOutboundDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
 import lombok.RequiredArgsConstructor;
 
@@ -16,6 +17,7 @@ public class UserApprovalService {
 
 	private final UtenteDao utenteDao;
     private final RichiestaAssociazioneUtenteDao richiestaDao;
+    private final TelefonataOutboundDao telefonataOutboundDao;
 
     public ManageUserApprovalResponse manageApproval(
             ManageUserApprovalRequest request) {
@@ -114,45 +116,93 @@ public class UserApprovalService {
         	    response.setMessage(
         	            "Utente registrato non trovato."
         	    );
-        	    response.setNextAction("ERROR");
+        	    response.setNextAction(
+        	            "ERROR"
+        	    );
 
         	    return response;
         	}
 
-        	boolean updated =
-        	        richiestaDao.approvaERegistraNuovoUtente(
-        	                richiesta,
-        	                utenteRegistrato,
-        	                utenteDao
+        	Long idNuovoUtente;
+
+        	try {
+
+        	    idNuovoUtente =
+        	            richiestaDao
+        	                    .approvaERegistraNuovoUtente(
+        	                            richiesta,
+        	                            utenteRegistrato,
+        	                            utenteDao
+        	                    );
+
+        	} catch (Exception e) {
+
+        	    e.printStackTrace();
+
+        	    response.setSuccess(false);
+        	    response.setIdRichiestaAssociazione(
+        	            richiesta.getId()
+        	    );
+        	    response.setMessage(
+        	            "Non è stato possibile completare "
+        	                    + "l'autorizzazione."
+        	    );
+        	    response.setNextAction(
+        	            "ERROR"
+        	    );
+
+        	    return response;
+        	}
+
+        	if (idNuovoUtente == null) {
+
+        	    response.setSuccess(false);
+        	    response.setIdRichiestaAssociazione(
+        	            richiesta.getId()
+        	    );
+        	    response.setMessage(
+        	            "Non è stato possibile creare "
+        	                    + "il nuovo utente."
+        	    );
+        	    response.setNextAction(
+        	            "ERROR"
+        	    );
+
+        	    return response;
+        	}
+
+        	/*
+        	 * Se la decisione è arrivata da WhatsApp
+        	 * e l'outbound non è ancora partita,
+        	 * annulliamo la chiamata.
+        	 *
+        	 * Se è già IN_CORSO non viene toccata.
+        	 */
+        	telefonataOutboundDao
+        	        .annullaApprovazioneNonAvviata(
+        	                richiesta.getId()
         	        );
 
-            if (!updated) {
+        	response.setSuccess(true);
 
-                response.setSuccess(false);
-                response.setIdRichiestaAssociazione(
-                        richiesta.getId()
-                );
-                response.setMessage(
-                        "Non è stato possibile approvare la richiesta."
-                );
-                response.setNextAction("ERROR");
+        	response.setIdRichiestaAssociazione(
+        	        richiesta.getId()
+        	);
 
-                return response;
-            }
+        	response.setStato(
+        	        "APPROVATA"
+        	);
 
-            response.setSuccess(true);
-            response.setIdRichiestaAssociazione(
-                    richiesta.getId()
-            );
-            response.setStato("APPROVATA");
-            response.setMessage(
-                    "La richiesta di autorizzazione è stata approvata."
-            );
-            response.setNextAction(
-                    "APPROVAL_CONFIRMED"
-            );
+        	response.setMessage(
+        	        "La richiesta di autorizzazione "
+        	                + "è stata approvata."
+        	);
 
-            return response;
+        	response.setNextAction(
+        	        "APPROVAL_CONFIRMED"
+        	);
+
+        	return response;
         }
 
         boolean updated =
@@ -186,6 +236,23 @@ public class UserApprovalService {
                 "APPROVAL_REJECTED"
         );
 
+        /*
+         * Se la decisione è arrivata via WhatsApp
+         * prima che partisse l'outbound,
+         * questa la annulla.
+         *
+         * Se invece siamo già dentro la chiamata,
+         * non succede nulla alla chiamata IN_CORSO.
+         */
+        telefonataOutboundDao
+                .annullaApprovazioneNonAvviata(
+                        richiesta.getId()
+                );
+        telefonataOutboundDao.completaApprovazioneUtente(
+                richiesta.getId(),
+                esito
+        );
+        
         return response;
     }
 }

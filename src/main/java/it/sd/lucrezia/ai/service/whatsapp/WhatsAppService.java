@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import it.sd.lucrezia.ai.bean.FornitoreWhatsAppSession;
+import it.sd.lucrezia.ai.bean.ManageUserApprovalRequest;
+import it.sd.lucrezia.ai.bean.ManageUserApprovalResponse;
 import it.sd.lucrezia.ai.bean.OpenAIRequestMessage;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.UserSession;
@@ -35,6 +37,7 @@ import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
 import it.sd.lucrezia.ai.prompt.LucreziaPromptBuilder;
 import it.sd.lucrezia.ai.service.openai.OpenAIService;
+import it.sd.lucrezia.ai.service.voice.UserApprovalService;
 import it.sd.lucrezia.ai.util.PhoneUtils;
 import lombok.RequiredArgsConstructor;
 
@@ -64,6 +67,7 @@ public class WhatsAppService {
     private final AllegatoDao allegatoDao;
     private final TicketConversazioneDao ticketConversazioneDao;
     private final LucreziaPromptBuilder lucreziaPromptBuilder;
+    private final UserApprovalService userApprovalService;
     
     private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, FornitoreWhatsAppSession> sessioniFornitori = new ConcurrentHashMap<>();
@@ -320,42 +324,118 @@ public class WhatsAppService {
     }
     
     public void elaboraMessaggio(String body) {
-        try {
-            JsonNode jsonRoot = objectMapper.readTree(body);
 
-            JsonNode messageNode = jsonRoot.path("entry")
-                    .get(0)
-                    .path("changes")
-                    .get(0)
-                    .path("value");
+        try {
+
+            JsonNode jsonRoot =
+                    objectMapper.readTree(body);
+
+            JsonNode messageNode =
+                    jsonRoot.path("entry")
+                            .get(0)
+                            .path("changes")
+                            .get(0)
+                            .path("value");
 
             if (!messageNode.has("messages")) {
-                System.out.println("Nessun messaggio da leggere");
+
+                System.out.println(
+                        "Nessun messaggio da leggere"
+                );
+
                 return;
             }
 
-            JsonNode message = messageNode.path("messages").get(0);
+            JsonNode message =
+                    messageNode.path("messages").get(0);
 
-            String from = phoneUtils.normalizePhone(message.path("from").asText());
-            String type = message.path("type").asText();
+            String from =
+                    phoneUtils.normalizePhone(
+                            message.path("from").asText()
+                    );
 
-            if ("image".equals(type) || "video".equals(type) || "document".equals(type)) {
-                processaAllegato(from, type, message);
+            String type =
+                    message.path("type").asText();
+
+            System.out.println(
+                    "Webhook WhatsApp - from="
+                            + from
+                            + " type="
+                            + type
+            );
+
+            /*
+             * ============================================================
+             * QUICK REPLY TEMPLATE
+             * ============================================================
+             *
+             * Prima di qualsiasi altro flusso controlliamo
+             * se il messaggio è la risposta ad un pulsante
+             * Approva / Rifiuta.
+             */
+            if ("button".equals(type)) {
+
+                processaPulsanteApprovazione(
+                        from,
+                        message
+                );
+
                 return;
             }
 
+            /*
+             * ============================================================
+             * ALLEGATI
+             * ============================================================
+             */
+            if ("image".equals(type)
+                    || "video".equals(type)
+                    || "document".equals(type)) {
+
+                processaAllegato(
+                        from,
+                        type,
+                        message
+                );
+
+                return;
+            }
+
+            /*
+             * ============================================================
+             * TESTO
+             * ============================================================
+             */
             if (!"text".equals(type)) {
-                invioMessaggio(from, "Al momento posso gestire testo, immagini, video e documenti.");
+
+                invioMessaggio(
+                        from,
+                        "Al momento posso gestire testo, "
+                        + "immagini, video e documenti."
+                );
+
                 return;
             }
-            
-            String testoMessaggio = message.path("text").path("body").asText();
 
-            System.out.println("Processo Messaggio da " + from + ": " + testoMessaggio);
+            String testoMessaggio =
+                    message.path("text")
+                            .path("body")
+                            .asText();
 
-            processaMessaggio(from, testoMessaggio);
+            System.out.println(
+                    "Processo Messaggio da "
+                            + from
+                            + ": "
+                            + testoMessaggio
+            );
+
+            processaMessaggio(
+                    from,
+                    testoMessaggio
+            );
 
         } catch (Exception e) {
+
             e.printStackTrace();
         }
     }
@@ -1357,6 +1437,248 @@ public class WhatsAppService {
         allegatoTemporaneoDao.deleteByTelefono(telefono);
 
         return temporanei.size();
+    }
+    
+    private void processaPulsanteApprovazione(
+            String from,
+            JsonNode message) {
+
+        try {
+
+            JsonNode button =
+                    message.path("button");
+
+            String payload =
+                    button.path("payload").asText();
+
+            String testoPulsante =
+                    button.path("text").asText();
+
+            System.out.println(
+                    "Pulsante WhatsApp ricevuto"
+                            + " - from=" + from
+                            + " payload=" + payload
+                            + " text=" + testoPulsante
+            );
+
+            if (payload == null
+                    || payload.isBlank()) {
+
+                System.err.println(
+                        "Payload pulsante WhatsApp vuoto"
+                );
+
+                return;
+            }
+
+            String prefissoApprova =
+                    "APPROVA_ASSOCIAZIONE_";
+
+            String prefissoRifiuta =
+                    "RIFIUTA_ASSOCIAZIONE_";
+
+            String esito;
+            String idString;
+
+            if (payload.startsWith(
+                    prefissoApprova)) {
+
+                esito = "APPROVA";
+
+                idString =
+                        payload.substring(
+                                prefissoApprova.length()
+                        );
+
+            } else if (payload.startsWith(
+                    prefissoRifiuta)) {
+
+                esito = "RIFIUTA";
+
+                idString =
+                        payload.substring(
+                                prefissoRifiuta.length()
+                        );
+
+            } else {
+
+                System.out.println(
+                        "Pulsante non relativo "
+                        + "all'approvazione utente: "
+                        + payload
+                );
+
+                return;
+            }
+
+            Long idRichiesta;
+
+            try {
+
+                idRichiesta =
+                        Long.valueOf(
+                                idString
+                        );
+
+            } catch (NumberFormatException e) {
+
+                System.err.println(
+                        "ID richiesta non valido "
+                        + "nel payload: "
+                        + payload
+                );
+
+                return;
+            }
+
+            ManageUserApprovalRequest request =
+                    new ManageUserApprovalRequest();
+
+            request.setIdRichiestaAssociazione(
+                    idRichiesta
+            );
+
+            request.setEsito(
+                    esito
+            );
+
+            ManageUserApprovalResponse response =
+                    userApprovalService
+                            .manageApproval(
+                                    request
+                            );
+
+            System.out.println(
+                    "Approvazione WhatsApp"
+                            + " - idRichiesta="
+                            + idRichiesta
+                            + " esito="
+                            + esito
+                            + " response="
+                            + response
+            );
+
+            gestisciRispostaApprovazioneWhatsApp(
+                    from,
+                    esito,
+                    response
+            );
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore gestione pulsante "
+                    + "approvazione WhatsApp"
+            );
+
+            e.printStackTrace();
+
+            invioMessaggio(
+                    from,
+                    "Mi dispiace, non sono riuscita "
+                    + "a registrare la tua risposta. "
+                    + "Riprova tra poco."
+            );
+        }
+    }
+    
+    private void gestisciRispostaApprovazioneWhatsApp(
+            String from,
+            String esito,
+            ManageUserApprovalResponse response) {
+
+        if (response == null) {
+
+            invioMessaggio(
+                    from,
+                    "Mi dispiace, non sono riuscita "
+                    + "a registrare la tua risposta."
+            );
+
+            return;
+        }
+
+        /*
+         * Richiesta già decisa tramite voce
+         * oppure tramite un precedente click WhatsApp.
+         */
+        if ("ALREADY_PROCESSED".equals(
+                response.getNextAction())) {
+
+            String stato =
+                    response.getStato();
+
+            if ("APPROVATA".equals(stato)) {
+
+                invioMessaggio(
+                        from,
+                        """
+                        ✅ La richiesta risulta già approvata.
+
+                        Non devi fare altro.
+                        """
+                );
+
+            } else if ("RIFIUTATA".equals(stato)) {
+
+                invioMessaggio(
+                        from,
+                        """
+                        ❌ La richiesta risulta già rifiutata.
+
+                        Non devi fare altro.
+                        """
+                );
+
+            } else {
+
+                invioMessaggio(
+                        from,
+                        "La richiesta risulta già gestita."
+                );
+            }
+
+            return;
+        }
+
+        if (!response.isSuccess()) {
+
+            invioMessaggio(
+                    from,
+                    "Mi dispiace, non sono riuscita "
+                    + "a registrare la tua risposta. "
+                    + "Riprova tra poco."
+            );
+
+            return;
+        }
+
+        if ("APPROVA".equals(esito)) {
+
+            invioMessaggio(
+                    from,
+                    """
+                    ✅ Autorizzazione confermata.
+
+                    La persona indicata è stata autorizzata a utilizzare Lucrezia per il condominio.
+
+                    Grazie per la conferma.
+                    """
+            );
+
+            return;
+        }
+
+        invioMessaggio(
+                from,
+                """
+                ❌ Richiesta non autorizzata.
+
+                Ho registrato la tua decisione.
+
+                Grazie per la risposta.
+                """
+        );
     }
     
     private String normalizeCategoria(String category) {
