@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 
 import it.sd.lucrezia.ai.bean.FindRegisteredUserRequest;
 import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
+import it.sd.lucrezia.ai.bean.SendApprovalRequest;
+import it.sd.lucrezia.ai.bean.SendApprovalResponse;
 import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.dao.UtenteDao;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ public class UnknownUserService {
 
     private final UtenteDao utenteDao;
     private final UnknownUserSearchAttemptService attemptService;
+    private final UnknownUserApprovalService unknownUserApprovalService;
 
     public FindRegisteredUserResponse findRegisteredUser(
             FindRegisteredUserRequest request) {
@@ -178,13 +181,70 @@ public class UnknownUserService {
                     "USER_FOUND"
             );
 
+            SendApprovalRequest approvalRequest =
+                    new SendApprovalRequest();
+
+            approvalRequest.setIdUtenteRegistrato(
+                    utente.getId()
+            );
+
+            approvalRequest.setIdCondominio(
+                    utente.getIdCondominio()
+            );
+
+            approvalRequest.setNomeNuovo(
+                    request.getNomeNuovo()
+            );
+
+            approvalRequest.setCognomeNuovo(
+                    request.getCognomeNuovo()
+            );
+
+            approvalRequest.setTelefonoNuovo(
+                    request.getTelefonoNuovo()
+            );
+
+            approvalRequest.setIdTelefonata(
+                    request.getIdTelefonata()
+            );
+
+            SendApprovalResponse approvalResponse =
+                    unknownUserApprovalService
+                            .sendApprovalRequest(
+                                    approvalRequest
+                            );
+            
+            if (approvalResponse.isSuccess()) {
+
+                response.setMessage(
+                        "Utente registrato individuato correttamente. "
+                        + "La richiesta di autorizzazione è stata inviata."
+                );
+
+                response.setNextAction(
+                        "USER_FOUND_AND_APPROVAL_SENT"
+                );
+
+            } else {
+
+                response.setMessage(
+                        "Utente registrato individuato correttamente, "
+                        + "ma non è stato possibile completare "
+                        + "l'invio della richiesta di autorizzazione."
+                );
+
+                response.setNextAction(
+                        "USER_FOUND_APPROVAL_ERROR"
+                );
+            }
+
             /*
              * Non serviranno più tentativi.
              */
             attemptService.clear(
                     request.getIdTelefonata()
             );
-
+            
             return response;
         }
 

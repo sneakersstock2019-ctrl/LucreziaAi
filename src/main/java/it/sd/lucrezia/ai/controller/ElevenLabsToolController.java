@@ -18,12 +18,15 @@ import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
 import it.sd.lucrezia.ai.bean.ManageUserApprovalRequest;
 import it.sd.lucrezia.ai.bean.ManageUserApprovalResponse;
 import it.sd.lucrezia.ai.bean.RetryOutboundResult;
+import it.sd.lucrezia.ai.bean.SendApprovalRequest;
+import it.sd.lucrezia.ai.bean.SendApprovalResponse;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
 import it.sd.lucrezia.ai.bean.ToolResult;
 import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
+import it.sd.lucrezia.ai.service.voice.UnknownUserApprovalService;
 import it.sd.lucrezia.ai.service.voice.UnknownUserService;
 import it.sd.lucrezia.ai.service.voice.UserApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class ElevenLabsToolController {
     private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
     private final UnknownUserService unknownUserService;
     private final UserApprovalService userApprovalService;
+    private final UnknownUserApprovalService unknownUserApprovalService;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -638,6 +642,31 @@ public class ElevenLabsToolController {
                 "TOOL findRegisteredUser"
                 + " - response="
                 + response
+        );
+
+        return ResponseEntity.ok(
+                response
+        );
+    }
+    
+    @PostMapping("/sendApprovalRequest")
+    public ResponseEntity<SendApprovalResponse> sendApprovalRequest(
+            @RequestBody SendApprovalRequest request) {
+
+        System.out.println(
+                "TOOL sendApprovalRequest - request="
+                        + request
+        );
+
+        SendApprovalResponse response =
+                unknownUserApprovalService
+                        .sendApprovalRequest(
+                                request
+                        );
+
+        System.out.println(
+                "TOOL sendApprovalRequest - response="
+                        + response
         );
 
         return ResponseEntity.ok(
