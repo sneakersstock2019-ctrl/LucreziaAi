@@ -341,4 +341,111 @@ public class UtenteDao {
 
         return null;
     }
+    
+    public Utente findById(Long idUtente) {
+
+        if (idUtente == null) {
+            return null;
+        }
+
+        String sql = """
+            SELECT
+                u.id,
+                u.nome,
+                u.cognome,
+                u.email,
+                u.telefono,
+                u.ruolo,
+                u.interno,
+                c.id AS id_condominio,
+                c.nome AS nome_condominio,
+                c.indirizzo AS indirizzo_condominio,
+                c.codice_fiscale AS codice_fiscale_condominio,
+                c.elevenlabs_branch_id
+            FROM utenti u
+            LEFT JOIN mappa_utenti_condomini muc
+                   ON muc.id_utente = u.id
+            LEFT JOIN condomini c
+                   ON c.id = muc.id_condominio
+            WHERE u.id = ?
+            LIMIT 1
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(1, idUtente);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+
+                    Utente utente = new Utente();
+
+                    utente.setId(
+                            rs.getLong("id")
+                    );
+
+                    utente.setNome(
+                            rs.getString("nome")
+                    );
+
+                    utente.setCognome(
+                            rs.getString("cognome")
+                    );
+
+                    utente.setEmail(
+                            rs.getString("email")
+                    );
+
+                    utente.setTelefono(
+                            rs.getString("telefono")
+                    );
+
+                    utente.setRuolo(
+                            rs.getString("ruolo")
+                    );
+
+                    utente.setInterno(
+                            rs.getString("interno")
+                    );
+
+                    Long idCondominio =
+                            rs.getObject(
+                                    "id_condominio",
+                                    Long.class
+                            );
+
+                    utente.setIdCondominio(
+                            idCondominio
+                    );
+
+                    utente.setNomeCondominio(
+                            rs.getString("nome_condominio")
+                    );
+
+                    utente.setIndirizzoCondominio(
+                            rs.getString("indirizzo_condominio")
+                    );
+
+                    utente.setCodiceFiscaleCondominio(
+                            rs.getString("codice_fiscale_condominio")
+                    );
+
+                    utente.setElevenlabsBranchId(
+                            rs.getString("elevenlabs_branch_id")
+                    );
+
+                    return utente;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import it.sd.lucrezia.ai.bean.FindRegisteredUserRequest;
 import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
+import it.sd.lucrezia.ai.bean.ManageUserApprovalRequest;
+import it.sd.lucrezia.ai.bean.ManageUserApprovalResponse;
 import it.sd.lucrezia.ai.bean.RetryOutboundResult;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
@@ -23,6 +25,7 @@ import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import it.sd.lucrezia.ai.service.voice.UnknownUserService;
+import it.sd.lucrezia.ai.service.voice.UserApprovalService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -36,6 +39,7 @@ public class ElevenLabsToolController {
     private final TelefonataDao telefonataDao;
     private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
     private final UnknownUserService unknownUserService;
+    private final UserApprovalService userApprovalService;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -640,6 +644,29 @@ public class ElevenLabsToolController {
                 response
         );
     }
+    
+    @PostMapping("/manageUserApproval")
+    public ResponseEntity<ManageUserApprovalResponse> manageUserApproval(
+            @RequestBody ManageUserApprovalRequest request) {
+
+        System.out.println(
+                "TOOL manageUserApproval - request="
+                        + request
+        );
+
+        ManageUserApprovalResponse response =
+                userApprovalService.manageApproval(
+                        request
+                );
+
+        System.out.println(
+                "TOOL manageUserApproval - response="
+                        + response
+        );
+
+        return ResponseEntity.ok(response);
+    }
+    
 
     private ToolResult<Map<String, Object>> missingField(String field) {
         return ToolResult.error(

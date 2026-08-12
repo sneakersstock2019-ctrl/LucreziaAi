@@ -71,6 +71,254 @@ public class WhatsAppService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
+    public boolean inviaTemplateApprovazioneUtente(
+            Utente utenteRegistrato,
+            String nomeNuovo,
+            String cognomeNuovo,
+            String telefonoNuovo,
+            Long idRichiesta) {
+
+        if (utenteRegistrato == null
+                || utenteRegistrato.getTelefono() == null
+                || utenteRegistrato.getTelefono().isBlank()) {
+
+            System.err.println(
+                    "APPROVAZIONE UTENTE - telefono utente registrato non disponibile"
+            );
+
+            return false;
+        }
+
+        if (idRichiesta == null) {
+
+            System.err.println(
+                    "APPROVAZIONE UTENTE - idRichiesta non disponibile"
+            );
+
+            return false;
+        }
+
+        try {
+
+            String telefonoDestinatario =
+                    phoneUtils.normalizePhone(
+                            utenteRegistrato.getTelefono()
+                    );
+
+            String nomeUtenteRegistrato =
+                    utenteRegistrato.getNome() != null
+                            ? utenteRegistrato.getNome().trim()
+                            : "";
+
+            String nomeCondominio =
+                    utenteRegistrato.getNomeCondominio() != null
+                            ? utenteRegistrato.getNomeCondominio().trim()
+                            : "";
+
+            String nominativoNuovo =
+                    ((nomeNuovo != null ? nomeNuovo.trim() : "")
+                            + " "
+                            + (cognomeNuovo != null ? cognomeNuovo.trim() : ""))
+                            .trim();
+
+            String telefonoNuovoNormalizzato =
+                    telefonoNuovo != null
+                            ? telefonoNuovo.trim()
+                            : "";
+
+            /*
+             * ============================================================
+             * PARAMETRI BODY
+             *
+             * {{1}} = nome utente registrato
+             * {{2}} = condominio
+             * {{3}} = nominativo nuova persona
+             * {{4}} = nuovo numero
+             * ============================================================
+             */
+
+            List<Map<String, Object>> bodyParameters =
+                    List.of(
+                            Map.of(
+                                    "type", "text",
+                                    "text", nomeUtenteRegistrato
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", nomeCondominio
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", nominativoNuovo
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", telefonoNuovoNormalizzato
+                            )
+                    );
+
+            Map<String, Object> bodyComponent =
+                    Map.of(
+                            "type", "body",
+                            "parameters", bodyParameters
+                    );
+
+            /*
+             * ============================================================
+             * PULSANTE 0 - APPROVA
+             *
+             * L'id della richiesta viene inserito nel payload.
+             *
+             * Esempio:
+             * APPROVA_ASSOCIAZIONE_125
+             * ============================================================
+             */
+
+            Map<String, Object> approvaParameter =
+                    Map.of(
+                            "type", "payload",
+                            "payload",
+                            "APPROVA_ASSOCIAZIONE_" + idRichiesta
+                    );
+
+            Map<String, Object> approvaButton =
+                    Map.of(
+                            "type", "button",
+                            "sub_type", "quick_reply",
+                            "index", "0",
+                            "parameters",
+                            List.of(approvaParameter)
+                    );
+
+            /*
+             * ============================================================
+             * PULSANTE 1 - RIFIUTA
+             * ============================================================
+             */
+
+            Map<String, Object> rifiutaParameter =
+                    Map.of(
+                            "type", "payload",
+                            "payload",
+                            "RIFIUTA_ASSOCIAZIONE_" + idRichiesta
+                    );
+
+            Map<String, Object> rifiutaButton =
+                    Map.of(
+                            "type", "button",
+                            "sub_type", "quick_reply",
+                            "index", "1",
+                            "parameters",
+                            List.of(rifiutaParameter)
+                    );
+
+            /*
+             * ============================================================
+             * TEMPLATE
+             * ============================================================
+             */
+
+            Map<String, Object> template =
+                    Map.of(
+                            "name", "approvazione_utente",
+                            "language",
+                            Map.of(
+                                    "code", "it"
+                            ),
+                            "components",
+                            List.of(
+                                    bodyComponent,
+                                    approvaButton,
+                                    rifiutaButton
+                            )
+                    );
+
+            /*
+             * ============================================================
+             * PAYLOAD META
+             * ============================================================
+             */
+
+            Map<String, Object> payload =
+                    Map.of(
+                            "messaging_product", "whatsapp",
+                            "to", telefonoDestinatario,
+                            "type", "template",
+                            "template", template
+                    );
+
+            HttpHeaders httpHeaders =
+                    new HttpHeaders();
+
+            httpHeaders.setContentType(
+                    MediaType.APPLICATION_JSON
+            );
+
+            httpHeaders.setBearerAuth(
+                    token
+            );
+
+            HttpEntity<Map<String, Object>> httpEntity =
+                    new HttpEntity<>(
+                            payload,
+                            httpHeaders
+                    );
+
+            String url =
+                    urlApiMetaMessages.replace(
+                            "{}",
+                            phoneNumberId
+                    );
+
+            System.out.println(
+                    "Invoco Template WhatsApp approvazione_utente"
+            );
+
+            System.out.println(
+                    "Destinatario: "
+                            + telefonoDestinatario
+            );
+
+            System.out.println(
+                    "Id richiesta: "
+                            + idRichiesta
+            );
+
+            System.out.println(
+                    "Payload: "
+                            + payload
+            );
+
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(
+                            url,
+                            httpEntity,
+                            String.class
+                    );
+
+            System.out.println(
+                    "Response Template approvazione_utente ("
+                            + response.getStatusCode()
+                            + "): "
+                            + response.getBody()
+            );
+
+            return response.getStatusCode().is2xxSuccessful();
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore invio template approvazione_utente"
+                            + " - idRichiesta="
+                            + idRichiesta
+            );
+
+            e.printStackTrace();
+
+            return false;
+        }
+    }
+    
     public void elaboraMessaggio(String body) {
         try {
             JsonNode jsonRoot = objectMapper.readTree(body);

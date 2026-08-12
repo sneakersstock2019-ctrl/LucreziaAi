@@ -8,11 +8,12 @@ voice:
   elevenlabs:
     api-key: ${ELEVENLABS_API_KEY}
     fornitore-agent-id: ${ELEVENLABS_FORNITORE_AGENT_ID}
+    approvazione-utente-agent-id: ${ELEVENLABS_APPROVAZIONE_UTENTE_AGENT_ID}
     utente-sconosciuto-branch-id: ${ELEVENLABS_UTENTE_SCONOSCIUTO_AGENT_ID}
     agent-phone-number-id: ${ELEVENLABS_AGENT_PHONE_NUMBER_ID}
     pre-call-token: ${ELEVENLABS_PRE_CALL_TOKEN}
     outbound-url: https://api.elevenlabs.io/v1/convai/sip-trunk/outbound-call
-    job-call-outbound-delay-ms: 10000
+    job-call-outbound-delay-ms: 60000
 
 whatsapp:
   token: ${WHATSAPP_TOKEN}

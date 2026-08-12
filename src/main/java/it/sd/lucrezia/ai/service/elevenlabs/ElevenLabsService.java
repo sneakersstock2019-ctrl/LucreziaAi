@@ -29,7 +29,10 @@ public class ElevenLabsService {
     private String outboundUrl;
     
     @Value("${voice.elevenlabs.fornitore-agent-id}")
-    private String agentId;
+    private String fornitoreAgentId;
+    
+    @Value("${voice.elevenlabs.approvazione-utente-agent-id}")
+    private String approvazioneUtenteAgentId;
 
     @Value("${voice.elevenlabs.agent-phone-number-id}")
     private String agentPhoneNumberId;
@@ -118,14 +121,21 @@ public class ElevenLabsService {
     public ElevenLabsSipCallResult avviaChiamata(
             String toNumber,
             String userId,
+            String agentId,
+            String agentPhoneNumberId,
             Map<String, Object> dynamicVariables) {
 
-        String numeroNormalizzato = normalizePhone(toNumber);
+        String numeroNormalizzato =
+                normalizePhone(toNumber);
 
         Map<String, Object> initiationData =
                 new LinkedHashMap<>();
 
-        initiationData.put("user_id", userId);
+        initiationData.put(
+                "user_id",
+                userId
+        );
+
         initiationData.put(
                 "dynamic_variables",
                 dynamicVariables
@@ -134,21 +144,26 @@ public class ElevenLabsService {
         Map<String, Object> payload =
                 new LinkedHashMap<>();
 
-        payload.put("agent_id", agentId);
+        payload.put(
+                "agent_id",
+                agentId
+        );
+
         payload.put(
                 "agent_phone_number_id",
                 agentPhoneNumberId
         );
-        payload.put("to_number", numeroNormalizzato);
+
+        payload.put(
+                "to_number",
+                numeroNormalizzato
+        );
+
         payload.put(
                 "conversation_initiation_client_data",
                 initiationData
         );
 
-        /*
-         * Il timeout di squillo è supportato dalla configurazione
-         * telephony_call_config della specifica ElevenLabs.
-         */
         payload.put(
                 "telephony_call_config",
                 Map.of(
@@ -157,19 +172,59 @@ public class ElevenLabsService {
                 )
         );
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("xi-api-key", apiKey);
+        HttpHeaders headers =
+                new HttpHeaders();
+
+        headers.setContentType(
+                MediaType.APPLICATION_JSON
+        );
+
+        headers.set(
+                "xi-api-key",
+                apiKey
+        );
 
         try {
+
+            System.out.println(
+                    "Avvio chiamata ElevenLabs SIP"
+            );
+
+            System.out.println(
+                    "Numero: " + numeroNormalizzato
+            );
+
+            System.out.println(
+                    "UserId: " + userId
+            );
+
+            System.out.println(
+                    "AgentId: " + agentId
+            );
+
+            System.out.println(
+                    "AgentPhoneNumberId: "
+                            + agentPhoneNumberId
+            );
+
+            System.out.println(
+                    "DynamicVariables: "
+                            + dynamicVariables
+            );
+
             ResponseEntity<String> response =
                     restTemplate.postForEntity(
                             outboundUrl,
-                            new HttpEntity<>(payload, headers),
+                            new HttpEntity<>(
+                                    payload,
+                                    headers
+                            ),
                             String.class
                     );
 
-            return parseResponse(response.getBody());
+            return parseResponse(
+                    response.getBody()
+            );
 
         } catch (HttpStatusCodeException e) {
 
@@ -182,6 +237,7 @@ public class ElevenLabsService {
             );
 
         } catch (Exception e) {
+
             throw new RuntimeException(
                     "Errore avvio chiamata SIP ElevenLabs",
                     e
@@ -189,14 +245,18 @@ public class ElevenLabsService {
         }
     }
 
-    public String getAgentId() {
-        return agentId;
+    public String getFornitoreAgentId() {
+        return fornitoreAgentId;
     }
 
+    public String getApprovazioneUtenteAgentId() {
+        return approvazioneUtenteAgentId;
+    }
+    
     public String getAgentPhoneNumberId() {
         return agentPhoneNumberId;
     }
-
+    
     private ElevenLabsSipCallResult parseResponse(
             String responseBody) throws Exception {
 

@@ -26,7 +26,7 @@ public class TelefonataOutboundDao {
 
     private final DataSource dataSource;
     private final ObjectMapper objectMapper;
-    
+
     public Long insert(TelefonataOutbound telefonata) {
 
         String sql = """
@@ -36,6 +36,8 @@ public class TelefonataOutboundDao {
                 id_fornitore,
                 id_condominio,
                 id_telefonata_precedente,
+                id_richiesta_associazione,
+                id_utente_destinatario,
                 telefono_destinatario,
                 nominativo_destinatario,
                 agent_id,
@@ -47,67 +49,127 @@ public class TelefonataOutboundDao {
                 data_aggiornamento
             )
             VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
             )
             RETURNING id
-        """;
+            """;
 
         try (
                 Connection conn = dataSource.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)
         ) {
-            ps.setString(1, telefonata.getTipoChiamata());
-            setNullableLong(ps, 2, telefonata.getIdTicket());
-            setNullableLong(ps, 3, telefonata.getIdFornitore());
-            setNullableLong(ps, 4, telefonata.getIdCondominio());
+
+            ps.setString(
+                    1,
+                    telefonata.getTipoChiamata()
+            );
+
+            setNullableLong(
+                    ps,
+                    2,
+                    telefonata.getIdTicket()
+            );
+
+            setNullableLong(
+                    ps,
+                    3,
+                    telefonata.getIdFornitore()
+            );
+
+            setNullableLong(
+                    ps,
+                    4,
+                    telefonata.getIdCondominio()
+            );
+
             setNullableLong(
                     ps,
                     5,
                     telefonata.getIdTelefonataPrecedente()
             );
 
-            ps.setString(
+            setNullableLong(
+                    ps,
                     6,
+                    telefonata.getIdRichiestaAssociazione()
+            );
+
+            setNullableLong(
+                    ps,
+                    7,
+                    telefonata.getIdUtenteDestinatario()
+            );
+
+            ps.setString(
+                    8,
                     telefonata.getTelefonoDestinatario()
             );
 
             ps.setString(
-                    7,
+                    9,
                     telefonata.getNominativoDestinatario()
             );
 
-            ps.setString(8, telefonata.getAgentId());
-            ps.setString(9, telefonata.getAgentPhoneNumberId());
-            ps.setString(10, telefonata.getStato());
+            ps.setString(
+                    10,
+                    telefonata.getAgentId()
+            );
+
+            ps.setString(
+                    11,
+                    telefonata.getAgentPhoneNumberId()
+            );
+
+            ps.setString(
+                    12,
+                    telefonata.getStato()
+            );
 
             if (telefonata.getDataProgrammata() != null) {
+
                 ps.setTimestamp(
-                        11,
+                        13,
                         Timestamp.valueOf(
                                 telefonata.getDataProgrammata()
                         )
                 );
+
             } else {
-                ps.setNull(11, java.sql.Types.TIMESTAMP);
+
+                ps.setNull(
+                        13,
+                        java.sql.Types.TIMESTAMP
+                );
             }
 
             ps.setObject(
-                    12,
-                    toJsonb(telefonata.getDynamicVariables())
+                    14,
+                    toJsonb(
+                            telefonata.getDynamicVariables()
+                    )
             );
 
             if (telefonata.getDataAvvio() != null) {
+
                 ps.setTimestamp(
-                        13,
-                        Timestamp.valueOf(telefonata.getDataAvvio())
+                        15,
+                        Timestamp.valueOf(
+                                telefonata.getDataAvvio()
+                        )
                 );
+
             } else {
-                ps.setNull(13, java.sql.Types.TIMESTAMP);
+
+                ps.setNull(
+                        15,
+                        java.sql.Types.TIMESTAMP
+                );
             }
 
             try (ResultSet rs = ps.executeQuery()) {
 
                 if (!rs.next()) {
+
                     throw new IllegalStateException(
                             "Inserimento telefonata outbound non riuscito"
                     );
@@ -117,6 +179,7 @@ public class TelefonataOutboundDao {
             }
 
         } catch (Exception e) {
+
             throw new RuntimeException(
                     "Errore inserimento telefonata outbound",
                     e
@@ -283,21 +346,23 @@ public class TelefonataOutboundDao {
             FROM chiamate_da_prendere c
             WHERE t.id = c.id
             RETURNING
-                t.id,
-                t.tipo_chiamata,
-                t.id_ticket,
-                t.id_fornitore,
-                t.id_condominio,
-                t.id_telefonata_precedente,
-                t.telefono_destinatario,
-                t.nominativo_destinatario,
-                t.agent_id,
-                t.agent_phone_number_id,
-                t.stato,
-                t.data_programmata,
-                t.tentativi,
-                t.massimo_tentativi,
-                t.dynamic_variables
+			    t.id,
+			    t.tipo_chiamata,
+			    t.id_ticket,
+			    t.id_fornitore,
+			    t.id_condominio,
+			    t.id_telefonata_precedente,
+			    t.id_richiesta_associazione,
+			    t.id_utente_destinatario,
+			    t.telefono_destinatario,
+			    t.nominativo_destinatario,
+			    t.agent_id,
+			    t.agent_phone_number_id,
+			    t.stato,
+			    t.data_programmata,
+			    t.tentativi,
+			    t.massimo_tentativi,
+			    t.dynamic_variables
         """;
 
         try (
@@ -337,6 +402,20 @@ public class TelefonataOutboundDao {
                             )
                     );
 
+                    t.setIdRichiestaAssociazione(
+                            getNullableLong(
+                                    rs,
+                                    "id_richiesta_associazione"
+                            )
+                    );
+
+                    t.setIdUtenteDestinatario(
+                            getNullableLong(
+                                    rs,
+                                    "id_utente_destinatario"
+                            )
+                    );
+                    
                     t.setTelefonoDestinatario(
                             rs.getString("telefono_destinatario")
                     );

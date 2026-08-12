@@ -15,27 +15,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TelefonataOutboundJob {
 
-    private final TelefonataOutboundDao
-            telefonataOutboundDao;
-
+    private final TelefonataOutboundDao telefonataOutboundDao;
     private final ElevenLabsService elevenLabsService;
 
     @Scheduled(
         fixedDelayString = "${voice.elevenlabs.job-call-outbound-delay-ms}"
     )
     public void processaChiamateOutbound() {
-    	System.out.println("Avvio Job Chiamata Fornitore");
+
+        System.out.println(
+                "Avvio Job Chiamate Outbound"
+        );
+
         List<TelefonataOutbound> chiamate;
 
         try {
+
             chiamate =
                     telefonataOutboundDao
                             .claimChiamateDaAvviare(5);
 
         } catch (Exception e) {
+
             System.err.println(
                     "Errore claim chiamate outbound: "
-                    + e.getMessage()
+                            + e.getMessage()
             );
 
             e.printStackTrace();
@@ -45,27 +49,64 @@ public class TelefonataOutboundJob {
         for (TelefonataOutbound chiamata : chiamate) {
             processaSingolaChiamata(chiamata);
         }
-        System.out.println("Fine Job Chiamata Fornitore (" + chiamate.size() + " chiamate effettuate)");
+
+        System.out.println(
+                "Fine Job Chiamate Outbound ("
+                        + chiamate.size()
+                        + " chiamate elaborate)"
+        );
     }
 
     private void processaSingolaChiamata(
             TelefonataOutbound chiamata) {
 
         try {
+
             System.out.println(
-                    "Avvio chiamata outbound id="
-                            + chiamata.getId()
+                    "Avvio chiamata outbound"
+                            + " id=" + chiamata.getId()
+                            + ", tipo="
+                            + chiamata.getTipoChiamata()
                             + ", ticket="
                             + chiamata.getIdTicket()
+                            + ", richiestaAssociazione="
+                            + chiamata.getIdRichiestaAssociazione()
+                            + ", destinatario="
+                            + chiamata.getNominativoDestinatario()
+                            + ", agentId="
+                            + chiamata.getAgentId()
                             + ", tentativo="
                             + chiamata.getTentativi()
             );
 
+            if (chiamata.getAgentId() == null
+                    || chiamata.getAgentId().isBlank()) {
+
+                throw new IllegalStateException(
+                        "Agent ElevenLabs non configurato"
+                );
+            }
+
+            if (chiamata.getAgentPhoneNumberId() == null
+                    || chiamata.getAgentPhoneNumberId().isBlank()) {
+
+                throw new IllegalStateException(
+                        "Agent phone number ElevenLabs "
+                        + "non configurato"
+                );
+            }
+
+            String userId =
+                    buildUserId(
+                            chiamata
+                    );
+
             ElevenLabsSipCallResult result =
                     elevenLabsService.avviaChiamata(
                             chiamata.getTelefonoDestinatario(),
-                            "fornitore-"
-                                    + chiamata.getIdFornitore(),
+                            userId,
+                            chiamata.getAgentId(),
+                            chiamata.getAgentPhoneNumberId(),
                             chiamata.getDynamicVariables()
                     );
 
@@ -76,8 +117,10 @@ public class TelefonataOutboundJob {
             );
 
             System.out.println(
-                    "Chiamata outbound avviata, id="
-                            + chiamata.getId()
+                    "Chiamata outbound avviata"
+                            + " id=" + chiamata.getId()
+                            + ", tipo="
+                            + chiamata.getTipoChiamata()
                             + ", conversationId="
                             + result.getConversationId()
             );
@@ -101,7 +144,32 @@ public class TelefonataOutboundJob {
         }
     }
 
-    private int calcolaMinutiRetry(int tentativo) {
+    private String buildUserId(
+            TelefonataOutbound chiamata) {
+
+        if ("FORNITORE".equals(
+                chiamata.getTipoChiamata())) {
+
+            return "fornitore-"
+                    + chiamata.getIdFornitore();
+        }
+
+        if ("APPROVAZIONE_UTENTE".equals(
+                chiamata.getTipoChiamata())) {
+
+            return "approvazione-"
+                    + chiamata.getIdRichiestaAssociazione();
+        }
+
+        /*
+         * Fallback generico.
+         */
+        return "outbound-"
+                + chiamata.getId();
+    }
+
+    private int calcolaMinutiRetry(
+            int tentativo) {
 
         return switch (tentativo) {
             case 1 -> 1;

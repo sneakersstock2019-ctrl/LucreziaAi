@@ -362,7 +362,9 @@ public class ConversationInitializationService {
     private String buildFirstMessageUtenteSconosciuto() {
 
         return buildSalutoOrario()
-                + ", sono Lucrezia. "
+                + ", sono Lucrezia, "
+                + "l'assistente dell'amministratore "
+                + "per gli interventi condominiali. "
                 + "Il numero dal quale stai chiamando non risulta ancora registrato, "
                 + "ma posso comunque aiutarti. "
                 + "Prima di tutto, puoi dirmi il tuo nome e cognome?";

@@ -67,7 +67,7 @@ public class OutboundFornitoreService {
         );
 
         telefonata.setAgentId(
-                elevenLabsService.getAgentId()
+                elevenLabsService.getFornitoreAgentId()
         );
 
         telefonata.setAgentPhoneNumberId(

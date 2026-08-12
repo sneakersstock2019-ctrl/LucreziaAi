@@ -50,6 +50,9 @@ public class TelefonataOutbound {
 
     private LocalDateTime prossimoTentativo;
     private LocalDateTime dataPresaInCarico;
+    
+    private Long idRichiestaAssociazione;
+    private Long idUtenteDestinatario;
 
     private String errore;
 
