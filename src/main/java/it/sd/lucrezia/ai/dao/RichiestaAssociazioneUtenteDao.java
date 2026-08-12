@@ -9,6 +9,7 @@ import javax.sql.DataSource;
 import org.springframework.stereotype.Repository;
 
 import it.sd.lucrezia.ai.bean.RichiestaAssociazioneUtente;
+import it.sd.lucrezia.ai.bean.Utente;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -255,5 +256,128 @@ public class RichiestaAssociazioneUtenteDao {
         }
 
         return false;
+    }
+    
+    public boolean approvaERegistraNuovoUtente(
+            RichiestaAssociazioneUtente richiesta,
+            Utente utenteRegistrato,
+            UtenteDao utenteDao) {
+
+        String sqlUpdateRichiesta = """
+            UPDATE richieste_associazione_utente
+            SET stato = 'APPROVATA',
+                data_risposta = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND stato = 'IN_ATTESA'
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection()
+        ) {
+
+            conn.setAutoCommit(false);
+
+            try {
+
+                /*
+                 * 1. Controlliamo che il numero non sia già registrato.
+                 */
+            	Utente esistente =
+            	        utenteDao.findByTelefono(
+            	                conn,
+            	                richiesta.getTelefonoNuovo()
+            	        );
+
+                if (esistente != null) {
+
+                    conn.rollback();
+
+                    throw new IllegalStateException(
+                            "Il numero "
+                                    + richiesta.getTelefonoNuovo()
+                                    + " risulta già registrato."
+                    );
+                }
+
+                /*
+                 * 2. Creiamo il nuovo condomino.
+                 *
+                 * L'interno viene ereditato dall'utente
+                 * registrato che ha autorizzato la richiesta.
+                 */
+                Long idNuovoUtente =
+                        utenteDao.insertCondomino(
+                                conn,
+                                richiesta.getNomeNuovo(),
+                                richiesta.getCognomeNuovo(),
+                                richiesta.getTelefonoNuovo(),
+                                utenteRegistrato.getInterno()
+                        );
+
+                if (idNuovoUtente == null) {
+
+                    conn.rollback();
+
+                    throw new IllegalStateException(
+                            "Impossibile creare il nuovo utente."
+                    );
+                }
+
+                /*
+                 * 3. Associazione allo stesso condominio.
+                 */
+                utenteDao.associaUtenteCondominio(
+                        conn,
+                        idNuovoUtente,
+                        richiesta.getIdCondominio()
+                );
+
+                /*
+                 * 4. Approviamo la richiesta.
+                 */
+                try (
+                        PreparedStatement ps =
+                                conn.prepareStatement(
+                                        sqlUpdateRichiesta
+                                )
+                ) {
+
+                    ps.setLong(
+                            1,
+                            richiesta.getId()
+                    );
+
+                    int updated =
+                            ps.executeUpdate();
+
+                    if (updated == 0) {
+
+                        conn.rollback();
+
+                        throw new IllegalStateException(
+                                "La richiesta non è più in attesa."
+                        );
+                    }
+                }
+
+                conn.commit();
+
+                return true;
+
+            } catch (Exception e) {
+
+                conn.rollback();
+                throw e;
+
+            } finally {
+
+                conn.setAutoCommit(true);
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+            return false;
+        }
     }
 }

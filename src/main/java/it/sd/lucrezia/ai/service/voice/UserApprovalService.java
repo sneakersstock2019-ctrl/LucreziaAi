@@ -5,13 +5,16 @@ import org.springframework.stereotype.Service;
 import it.sd.lucrezia.ai.bean.ManageUserApprovalRequest;
 import it.sd.lucrezia.ai.bean.ManageUserApprovalResponse;
 import it.sd.lucrezia.ai.bean.RichiestaAssociazioneUtente;
+import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.dao.RichiestaAssociazioneUtenteDao;
+import it.sd.lucrezia.ai.dao.UtenteDao;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class UserApprovalService {
 
+	private final UtenteDao utenteDao;
     private final RichiestaAssociazioneUtenteDao richiestaDao;
 
     public ManageUserApprovalResponse manageApproval(
@@ -97,10 +100,31 @@ public class UserApprovalService {
 
         if ("APPROVA".equals(esito)) {
 
-            boolean updated =
-                    richiestaDao.approva(
-                            richiesta.getId()
-                    );
+        	Utente utenteRegistrato =
+        	        utenteDao.findById(
+        	                richiesta.getIdUtenteRegistrato()
+        	        );
+
+        	if (utenteRegistrato == null) {
+
+        	    response.setSuccess(false);
+        	    response.setIdRichiestaAssociazione(
+        	            richiesta.getId()
+        	    );
+        	    response.setMessage(
+        	            "Utente registrato non trovato."
+        	    );
+        	    response.setNextAction("ERROR");
+
+        	    return response;
+        	}
+
+        	boolean updated =
+        	        richiestaDao.approvaERegistraNuovoUtente(
+        	                richiesta,
+        	                utenteRegistrato,
+        	                utenteDao
+        	        );
 
             if (!updated) {
 
