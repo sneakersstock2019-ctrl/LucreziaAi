@@ -6,6 +6,7 @@ import it.sd.lucrezia.ai.bean.CreatePendingTicketRequest;
 import it.sd.lucrezia.ai.bean.CreatePendingTicketResponse;
 import it.sd.lucrezia.ai.bean.RichiestaAssociazioneUtente;
 import it.sd.lucrezia.ai.dao.RichiestaAssociazioneUtenteDao;
+import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ public class UnknownUserTicketService {
 
     private final RichiestaAssociazioneUtenteDao richiestaDao;
     private final TicketDao ticketDao;
+    private final TelefonataDao telefonataDao;
 
     public CreatePendingTicketResponse createPendingTicket(
             CreatePendingTicketRequest request) {
@@ -141,6 +143,18 @@ public class UnknownUserTicketService {
 
             return response;
         }
+        
+        /*
+         * Associo il ticket alla telefonata inbound.
+         *
+         * In questo modo il post-call continuerà a salvare
+         * trascrizione e audio sulla telefonata e la Dashboard
+         * potrà recuperarli tramite id_ticket.
+         */
+        telefonataDao.updateIdTicket(
+                request.getIdTelefonata(),
+                idTicket
+        );
 
         response.setSuccess(true);
         response.setIdTicket(idTicket);

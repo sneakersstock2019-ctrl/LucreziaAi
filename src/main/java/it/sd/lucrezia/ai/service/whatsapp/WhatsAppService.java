@@ -53,6 +53,9 @@ public class WhatsAppService {
     
     @Value("${whatsapp.url-api-meta-messages}")
     private String urlApiMetaMessages;
+    
+    @Value("${lucrezia.numero-voce}")
+    private String numeroLucrezia;
 
     private static final String STEP_SCELTA_TICKET = "SCELTA_TICKET";
     private static final String STEP_NUOVA_SEGNALAZIONE = "NUOVA_SEGNALAZIONE";
@@ -75,6 +78,175 @@ public class WhatsAppService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
+    public boolean inviaTemplateSegnalazioneAperta(
+            Utente utente,
+            Long idTicket,
+            String descrizioneTicket,
+            String numeroLucrezia) {
+
+        if (utente == null
+                || utente.getTelefono() == null
+                || utente.getTelefono().isBlank()
+                || idTicket == null) {
+
+            System.err.println(
+                    "SEGNALAZIONE APERTA - dati obbligatori mancanti"
+            );
+
+            return false;
+        }
+
+        try {
+
+            String telefonoDestinatario =
+                    phoneUtils.normalizePhone(
+                            utente.getTelefono()
+                    );
+
+            String nome =
+                    utente.getNome() != null
+                            ? utente.getNome().trim()
+                            : "";
+
+            String condominio =
+                    utente.getNomeCondominio() != null
+                            ? utente.getNomeCondominio().trim()
+                            : "";
+
+            String descrizione =
+                    descrizioneTicket != null
+                            ? descrizioneTicket.trim()
+                            : "";
+
+            String numero =
+                    numeroLucrezia != null
+                            ? numeroLucrezia.trim()
+                            : "";
+
+            List<Map<String, Object>> bodyParameters =
+                    List.of(
+                            Map.of(
+                                    "type", "text",
+                                    "text", nome
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", String.valueOf(idTicket)
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", condominio
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", descrizione
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", numero
+                            )
+                    );
+
+            Map<String, Object> bodyComponent =
+                    Map.of(
+                            "type", "body",
+                            "parameters", bodyParameters
+                    );
+
+            Map<String, Object> template =
+                    Map.of(
+                            "name", "segnalazione_aperta",
+                            "language",
+                            Map.of(
+                                    "code", "it"
+                            ),
+                            "components",
+                            List.of(
+                                    bodyComponent
+                            )
+                    );
+
+            Map<String, Object> payload =
+                    Map.of(
+                            "messaging_product", "whatsapp",
+                            "to", telefonoDestinatario,
+                            "type", "template",
+                            "template", template
+                    );
+
+            HttpHeaders httpHeaders =
+                    new HttpHeaders();
+
+            httpHeaders.setContentType(
+                    MediaType.APPLICATION_JSON
+            );
+
+            httpHeaders.setBearerAuth(
+                    token
+            );
+
+            HttpEntity<Map<String, Object>> httpEntity =
+                    new HttpEntity<>(
+                            payload,
+                            httpHeaders
+                    );
+
+            String url =
+                    urlApiMetaMessages.replace(
+                            "{}",
+                            phoneNumberId
+                    );
+
+            System.out.println(
+                    "Invoco Template WhatsApp segnalazione_aperta"
+            );
+
+            System.out.println(
+                    "Destinatario: "
+                            + telefonoDestinatario
+            );
+
+            System.out.println(
+                    "Ticket: "
+                            + idTicket
+            );
+
+            System.out.println(
+                    "Payload: "
+                            + payload
+            );
+
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(
+                            url,
+                            httpEntity,
+                            String.class
+                    );
+
+            System.out.println(
+                    "Response Template segnalazione_aperta ("
+                            + response.getStatusCode()
+                            + "): "
+                            + response.getBody()
+            );
+
+            return response.getStatusCode()
+                    .is2xxSuccessful();
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore invio template segnalazione_aperta"
+                            + " - idTicket="
+                            + idTicket
+            );
+
+            e.printStackTrace();
+
+            return false;
+        }
+    }
+    
     public boolean inviaTemplateApprovazioneUtente(
             Utente utenteRegistrato,
             String nomeNuovo,
@@ -558,13 +730,25 @@ public class WhatsAppService {
             int allegatiCollegati = collegaAllegatiTemporanei(from, idTicket);
             ticketConversazioneDao.insertConversazione(idTicket, utente.getId(), "CONDOMINO", buildConversazioneOriginale(userSession));
 
-            rispostaPerUtente += """
-                    Ticket aperto correttamente ✅
+            boolean templateInviato =
+                    inviaTemplateSegnalazioneAperta(
+                            utente,
+                            idTicket,
+                            descrizioneTicket
+                    );
+            if (!templateInviato) {
 
-                    Numero ticket: #%d
+                invioMessaggio(
+                        from,
+                        """
+                        Segnalazione registrata correttamente ✅
 
-                    Per conoscere lo stato della segnalazione puoi scrivermi qui su WhatsApp oppure chiamarmi.
-                    """.formatted(idTicket);
+                        Numero ticket: #%d
+
+                        Se vuoi puoi inviarmi una foto o un video del problema e lo collegherò alla segnalazione.
+                        """.formatted(idTicket)
+                );
+            }
 
             resetSessioneDopoTicket(userSession);
 
@@ -1306,6 +1490,158 @@ public class WhatsAppService {
     			Se non vuoi aggiungere allegati, puoi scrivere "no grazie".
     			""".formatted(nome, idTicket)
     			);
+    }
+    
+    public boolean inviaTemplateSegnalazioneAperta(
+            Utente utente,
+            Long idTicket,
+            String descrizioneTicket) {
+
+        if (utente == null
+                || utente.getTelefono() == null
+                || utente.getTelefono().isBlank()
+                || idTicket == null) {
+
+            System.err.println(
+                    "SEGNALAZIONE APERTA - dati obbligatori mancanti"
+            );
+
+            return false;
+        }
+
+        try {
+
+            String telefonoDestinatario =
+                    phoneUtils.normalizePhone(
+                            utente.getTelefono()
+                    );
+
+            String nome =
+                    utente.getNome() != null
+                            ? utente.getNome().trim()
+                            : "";
+
+            String condominio =
+                    utente.getNomeCondominio() != null
+                            ? utente.getNomeCondominio().trim()
+                            : "";
+
+            String descrizione =
+                    descrizioneTicket != null
+                            ? descrizioneTicket.trim()
+                            : "";
+
+            List<Map<String, Object>> bodyParameters =
+                    List.of(
+                            Map.of(
+                                    "type", "text",
+                                    "text", nome
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", String.valueOf(idTicket)
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", condominio
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", descrizione
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", numeroLucrezia
+                            )
+                    );
+
+            Map<String, Object> bodyComponent =
+                    Map.of(
+                            "type", "body",
+                            "parameters", bodyParameters
+                    );
+
+            Map<String, Object> template =
+                    Map.of(
+                            "name", "segnalazione_aperta",
+                            "language",
+                            Map.of(
+                                    "code", "it"
+                            ),
+                            "components",
+                            List.of(
+                                    bodyComponent
+                            )
+                    );
+
+            Map<String, Object> payload =
+                    Map.of(
+                            "messaging_product", "whatsapp",
+                            "to", telefonoDestinatario,
+                            "type", "template",
+                            "template", template
+                    );
+
+            HttpHeaders headers =
+                    new HttpHeaders();
+
+            headers.setContentType(
+                    MediaType.APPLICATION_JSON
+            );
+
+            headers.setBearerAuth(
+                    token
+            );
+
+            HttpEntity<Map<String, Object>> entity =
+                    new HttpEntity<>(
+                            payload,
+                            headers
+                    );
+
+            String url =
+                    urlApiMetaMessages.replace(
+                            "{}",
+                            phoneNumberId
+                    );
+
+            System.out.println(
+                    "Invio template segnalazione_aperta"
+                            + " - telefono="
+                            + telefonoDestinatario
+                            + " - idTicket="
+                            + idTicket
+            );
+
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(
+                            url,
+                            entity,
+                            String.class
+                    );
+
+            System.out.println(
+                    "Response template segnalazione_aperta ("
+                            + response.getStatusCode()
+                            + "): "
+                            + response.getBody()
+            );
+
+            return response.getStatusCode()
+                    .is2xxSuccessful();
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore invio template segnalazione_aperta"
+                            + " - idTicket="
+                            + idTicket
+            );
+
+            e.printStackTrace();
+
+            return false;
+        }
     }
     
     private WhatsAppAiResponse askLucrezia(String messaggioUtente, UserSession session, Utente utente, String contestoCondominio) {

@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,13 +26,16 @@ import it.sd.lucrezia.ai.bean.SendApprovalResponse;
 import it.sd.lucrezia.ai.bean.TicketStatusInfo;
 import it.sd.lucrezia.ai.bean.ToolNextAction;
 import it.sd.lucrezia.ai.bean.ToolResult;
+import it.sd.lucrezia.ai.bean.Utente;
 import it.sd.lucrezia.ai.dao.FornitoreOutboundToolDao;
 import it.sd.lucrezia.ai.dao.TelefonataDao;
 import it.sd.lucrezia.ai.dao.TicketDao;
+import it.sd.lucrezia.ai.dao.UtenteDao;
 import it.sd.lucrezia.ai.service.voice.UnknownUserApprovalService;
 import it.sd.lucrezia.ai.service.voice.UnknownUserService;
 import it.sd.lucrezia.ai.service.voice.UnknownUserTicketService;
 import it.sd.lucrezia.ai.service.voice.UserApprovalService;
+import it.sd.lucrezia.ai.service.whatsapp.WhatsAppService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -39,8 +43,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ElevenLabsToolController {
 
-    private static final String CANALE_TELEFONO = "TELEFONO";
+	private static final String CANALE_TELEFONO = "TELEFONO";
+	
+    @Value("${lucrezia.numero-voce}")
+    private String numeroLucrezia;
+    
 
+    private final UtenteDao utenteDao;
     private final TicketDao ticketDao;
     private final TelefonataDao telefonataDao;
     private final FornitoreOutboundToolDao fornitoreOutboundToolDao;
@@ -48,6 +57,7 @@ public class ElevenLabsToolController {
     private final UserApprovalService userApprovalService;
     private final UnknownUserApprovalService unknownUserApprovalService;
     private final UnknownUserTicketService unknownUserTicketService;
+    private final WhatsAppService whatsAppService;
 
     @PostMapping("/getOpenTickets")
     public ToolResult<Map<String, Object>> getOpenTickets(@RequestBody Map<String, Object> body) {
@@ -73,54 +83,184 @@ public class ElevenLabsToolController {
     }
 
     @PostMapping("/createTicket")
-    public ToolResult<Map<String, Object>> createTicket(@RequestBody Map<String, Object> body) {
+    public ToolResult<Map<String, Object>> createTicket(
+            @RequestBody Map<String, Object> body) {
 
-        logTool("createTicket", body);
+        logTool(
+                "createTicket",
+                body
+        );
 
-        Long idUtente = getLong(body, "id_utente");
-        Long idCondominio = getLong(body, "id_condominio");
-        String callSid = safeRaw(body.get("call_sid"));
+        Long idUtente =
+                getLong(
+                        body,
+                        "id_utente"
+                );
 
-        String categoria = safe(body.get("categoria"));
-        String priorita = safe(body.get("priorita"));
-        String area = safe(body.get("area"));
-        String descrizione = safe(body.get("descrizione"));
+        Long idCondominio =
+                getLong(
+                        body,
+                        "id_condominio"
+                );
+
+        String callSid =
+                safeRaw(
+                        body.get("call_sid")
+                );
+
+        String categoria =
+                safe(
+                        body.get("categoria")
+                );
+
+        String priorita =
+                safe(
+                        body.get("priorita")
+                );
+
+        String area =
+                safe(
+                        body.get("area")
+                );
+
+        String descrizione =
+                safe(
+                        body.get("descrizione")
+                );
 
         if (idUtente == null) {
-            return missingField("id_utente");
+            return missingField(
+                    "id_utente"
+            );
         }
 
         if (idCondominio == null) {
-            return missingField("id_condominio");
+            return missingField(
+                    "id_condominio"
+            );
         }
 
         if (categoria.isBlank()) {
-            return missingField("categoria");
+            return missingField(
+                    "categoria"
+            );
         }
 
         if (priorita.isBlank()) {
-            return missingField("priorita");
+            return missingField(
+                    "priorita"
+            );
         }
 
         if (area.isBlank()) {
-            return missingField("area");
+            return missingField(
+                    "area"
+            );
         }
 
         if (descrizione.isBlank()) {
-            return missingField("descrizione");
+            return missingField(
+                    "descrizione"
+            );
         }
 
-        Long ticketId = ticketDao.insertTicket(
-                idCondominio,
-                idUtente,
-                categoria,
-                priorita,
-                CANALE_TELEFONO,
-                descrizione + " Area: " + area + "."
+        /*
+         * ============================================================
+         * CREAZIONE TICKET
+         * ============================================================
+         */
+
+        Long ticketId =
+                ticketDao.insertTicket(
+                        idCondominio,
+                        idUtente,
+                        categoria,
+                        priorita,
+                        CANALE_TELEFONO,
+                        descrizione
+                                + " Area: "
+                                + area
+                                + "."
+                );
+
+        if (ticketId == null) {
+
+            return ToolResult.error(
+                    "TICKET_CREATE_ERROR",
+                    "Non è stato possibile creare la segnalazione.",
+                    null
+            );
+        }
+
+        /*
+         * Associazione ticket alla telefonata.
+         */
+        telefonataDao.updateTicketByCallSid(
+                callSid,
+                ticketId
         );
-        boolean richiediFoto = shouldRequestPhoto(categoria, descrizione);
-        
-        telefonataDao.updateTicketByCallSid(callSid, ticketId);
+
+        /*
+         * ============================================================
+         * TEMPLATE WHATSAPP
+         * ============================================================
+         */
+
+        try {
+
+            Utente utente =
+                    utenteDao.findById(
+                            idUtente
+                    );
+
+            if (utente != null) {
+
+                boolean templateInviato =
+                        whatsAppService
+                                .inviaTemplateSegnalazioneAperta(
+                                        utente,
+                                        ticketId,
+                                        descrizione,
+                                        numeroLucrezia
+                                );
+
+                System.out.println(
+                        "TEMPLATE segnalazione_aperta"
+                                + " - ticket="
+                                + ticketId
+                                + " - inviato="
+                                + templateInviato
+                );
+            }
+
+        } catch (Exception e) {
+
+            /*
+             * Il ticket è già stato creato.
+             * Un errore WhatsApp non deve far fallire il tool.
+             */
+            System.err.println(
+                    "Ticket "
+                            + ticketId
+                            + " creato correttamente, "
+                            + "ma invio template WhatsApp fallito: "
+                            + e.getMessage()
+            );
+
+            e.printStackTrace();
+        }
+
+        /*
+         * ============================================================
+         * FOTO
+         * ============================================================
+         */
+
+        boolean richiediFoto =
+                shouldRequestPhoto(
+                        categoria,
+                        descrizione
+                );
 
         return ToolResult.ok(
                 "OK",

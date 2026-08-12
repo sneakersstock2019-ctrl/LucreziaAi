@@ -1,5 +1,8 @@
 package it.sd.lucrezia.ai.dao;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
 import javax.sql.DataSource;
 
 import org.springframework.stereotype.Repository;
@@ -245,5 +248,61 @@ public class TelefonataDao {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void updateIdTicket(
+	        Long idTelefonata,
+	        Long idTicket) {
+
+	    if (idTelefonata == null
+	            || idTicket == null) {
+
+	        return;
+	    }
+
+	    String sql = """
+	        UPDATE telefonata
+	        SET id_ticket = ?
+	        WHERE id = ?
+	        """;
+
+	    try (
+	            Connection conn = dataSource.getConnection();
+	            PreparedStatement ps = conn.prepareStatement(sql)
+	    ) {
+
+	        ps.setLong(
+	                1,
+	                idTicket
+	        );
+
+	        ps.setLong(
+	                2,
+	                idTelefonata
+	        );
+
+	        int updated =
+	                ps.executeUpdate();
+
+	        System.out.println(
+	                "TELEFONATA UPDATE TICKET"
+	                        + " - idTelefonata="
+	                        + idTelefonata
+	                        + " - idTicket="
+	                        + idTicket
+	                        + " - updated="
+	                        + updated
+	        );
+
+	    } catch (Exception e) {
+
+	        throw new RuntimeException(
+	                "Errore associazione ticket "
+	                        + idTicket
+	                        + " alla telefonata "
+	                        + idTelefonata,
+	                e
+	        );
+	    }
 	}
 }

@@ -37,3 +37,4 @@ lucrezia:
   api-public-base-url: https://api.lucreziaai.it
   api-public-secret: ${LUCREZIA_API_SECRET}
   dashboard-public-base-url: #
+  numero-voce: 06 9762 4224

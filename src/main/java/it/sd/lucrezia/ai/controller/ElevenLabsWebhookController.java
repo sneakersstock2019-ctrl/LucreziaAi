@@ -280,10 +280,12 @@ public class ElevenLabsWebhookController {
 
     private void handleCallFailure(JsonNode body) {
 
-        JsonNode data = body.path("data");
+        JsonNode data =
+                body.path("data");
 
         String conversationId =
-                data.path("conversation_id").asText();
+                data.path("conversation_id")
+                        .asText();
 
         String reason =
                 data.path("reason")
@@ -291,9 +293,9 @@ public class ElevenLabsWebhookController {
 
         System.out.println(
                 "ELEVENLABS CALL FAILURE"
-                        + " conversationId="
+                        + " - conversationId="
                         + conversationId
-                        + " reason="
+                        + " - reason="
                         + reason
         );
 
@@ -306,37 +308,66 @@ public class ElevenLabsWebhookController {
         if (idTelefonataOutbound == null) {
 
             System.out.println(
-                    "Nessuna telefonata outbound trovata"
-                            + " per conversationId="
+                    "ELEVENLABS CALL FAILURE"
+                            + " - nessuna telefonata outbound trovata"
+                            + " - conversationId="
                             + conversationId
             );
 
             return;
         }
 
-        RetryOutboundResult retry =
-                fornitoreOutboundToolDao
-                        .programmaRetryMancataRisposta(
-                                idTelefonataOutbound,
-                                reason
-                        );
+        try {
 
-        if (retry == null) {
-            return;
+            RetryOutboundResult retry =
+                    fornitoreOutboundToolDao
+                            .programmaRetryMancataRisposta(
+                                    idTelefonataOutbound,
+                                    reason
+                            );
+
+            if (retry == null) {
+
+                System.out.println(
+                        "ELEVENLABS CALL FAILURE"
+                                + " - retry non programmato"
+                                + " - id="
+                                + idTelefonataOutbound
+                );
+
+                return;
+            }
+
+            System.out.println(
+                    "RETRY OUTBOUND GESTITO"
+                            + " - id="
+                            + idTelefonataOutbound
+                            + " - tentativo="
+                            + retry.getTentativi()
+                            + "/"
+                            + retry.getMassimoTentativi()
+                            + " - stato="
+                            + retry.getStato()
+                            + " - prossimoTentativo="
+                            + retry.getProssimoTentativo()
+            );
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore gestione retry outbound"
+                            + " - id="
+                            + idTelefonataOutbound
+                            + " - conversationId="
+                            + conversationId
+                            + " - reason="
+                            + reason
+                            + " - errore="
+                            + e.getMessage()
+            );
+
+            e.printStackTrace();
         }
-
-        System.out.println(
-                "RETRY OUTBOUND GESTITO"
-                        + " id=" + idTelefonataOutbound
-                        + " tentativo="
-                        + retry.getTentativi()
-                        + "/"
-                        + retry.getMassimoTentativi()
-                        + " stato="
-                        + retry.getStato()
-                        + " prossimoTentativo="
-                        + retry.getProssimoTentativo()
-        );
     }
     
     private void handleTranscription(JsonNode body)
@@ -356,6 +387,9 @@ public class ElevenLabsWebhookController {
         JsonNode dynamicVariables =
                 data.path("conversation_initiation_client_data")
                         .path("dynamic_variables");
+
+        JsonNode transcriptNode =
+                data.path("transcript");
 
         long durata =
                 data.path("metadata")
@@ -392,22 +426,79 @@ public class ElevenLabsWebhookController {
 
         if (idTelefonataOutbound != null) {
 
-        	String tipoChiamata =
-        	        telefonataOutboundDao
-        	                .findTipoChiamataByConversationId(
-        	                        conversationId
-        	                );
+            String tipoChiamata =
+                    telefonataOutboundDao
+                            .findTipoChiamataByConversationId(
+                                    conversationId
+                            );
 
-        	String nomeInterlocutore =
-        	        getNomeInterlocutoreOutbound(
-        	                tipoChiamata
-        	        );
+            boolean rispostaUtente =
+                    haRispostaUtente(
+                            transcriptNode
+                    );
 
-        	String trascrizione =
-        	        buildTranscript(
-        	                data.path("transcript"),
-        	                nomeInterlocutore
-        	        );
+            System.out.println(
+                    "ELEVENLABS OUTBOUND POST-CALL"
+                            + " - id="
+                            + idTelefonataOutbound
+                            + " - tipo="
+                            + tipoChiamata
+                            + " - conversationId="
+                            + conversationId
+                            + " - durata="
+                            + durata
+                            + " - rispostaUtente="
+                            + rispostaUtente
+                            + " - numeroTool="
+                            + numeroTool
+            );
+
+            /*
+             * ========================================================
+             * NESSUNA RISPOSTA REALE
+             * ========================================================
+             *
+             * ElevenLabs può generare il post-call anche se
+             * il destinatario non ha realmente conversato.
+             *
+             * In questo caso NON impostiamo COMPLETATA.
+             */
+            if (!rispostaUtente) {
+
+                System.out.println(
+                        "ELEVENLABS OUTBOUND SENZA RISPOSTA UTENTE"
+                                + " - id="
+                                + idTelefonataOutbound
+                                + " - conversationId="
+                                + conversationId
+                                + " - programmo retry"
+                );
+
+                telefonataOutboundDao.programmaRetry(
+                        idTelefonataOutbound,
+                        "NESSUNA_RISPOSTA_UTENTE",
+                        1
+                );
+
+                return;
+            }
+
+            /*
+             * ========================================================
+             * CONVERSAZIONE REALE
+             * ========================================================
+             */
+
+            String nomeInterlocutore =
+                    getNomeInterlocutoreOutbound(
+                            tipoChiamata
+                    );
+
+            String trascrizione =
+                    buildTranscript(
+                            transcriptNode,
+                            nomeInterlocutore
+                    );
 
             telefonataOutboundDao.completaPostCall(
                     idTelefonataOutbound,
@@ -421,6 +512,8 @@ public class ElevenLabsWebhookController {
                     "ELEVENLABS OUTBOUND TRASCRIZIONE SALVATA"
                             + " - id="
                             + idTelefonataOutbound
+                            + " - tipo="
+                            + tipoChiamata
                             + " - conversationId="
                             + conversationId
             );
@@ -443,7 +536,7 @@ public class ElevenLabsWebhookController {
 
         String trascrizione =
                 buildTranscript(
-                        data.path("transcript"),
+                        transcriptNode,
                         "Condomino"
                 );
 
@@ -660,6 +753,44 @@ public class ElevenLabsWebhookController {
             default ->
                     "Interlocutore";
         };
+    }
+    
+    private boolean haRispostaUtente(
+            JsonNode transcript) {
+
+        if (transcript == null
+                || !transcript.isArray()
+                || transcript.isEmpty()) {
+
+            return false;
+        }
+
+        for (JsonNode item : transcript) {
+
+            String role =
+                    item.path("role")
+                            .asText();
+
+            if ("user".equalsIgnoreCase(role)) {
+
+                String message =
+                        item.path("message")
+                                .asText();
+
+                /*
+                 * Se ElevenLabs ha davvero trascritto
+                 * qualcosa detto dal destinatario,
+                 * consideriamo la chiamata risposta.
+                 */
+                if (message != null
+                        && !message.isBlank()) {
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private boolean isValidTranscriptMessage(String message) {
