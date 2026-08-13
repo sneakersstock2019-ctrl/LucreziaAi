@@ -247,6 +247,157 @@ public class WhatsAppService {
         }
     }
     
+    public boolean inviaTemplateAggiornamentoTicketUtente(
+            Utente utente,
+            Long idTicket,
+            String descrizioneTicket,
+            String aggiornamento) {
+
+        if (utente == null
+                || utente.getTelefono() == null
+                || utente.getTelefono().isBlank()
+                || idTicket == null) {
+
+            System.err.println(
+                    "AGGIORNAMENTO TICKET - dati obbligatori mancanti"
+            );
+
+            return false;
+        }
+
+        try {
+
+            String telefonoDestinatario =
+                    phoneUtils.normalizePhone(
+                            utente.getTelefono()
+                    );
+
+            String nome =
+                    utente.getNome() != null
+                            ? utente.getNome().trim()
+                            : "";
+
+            String descrizione =
+                    descrizioneTicket != null
+                            ? descrizioneTicket.trim()
+                            : "";
+
+            String testoAggiornamento =
+                    aggiornamento != null
+                            ? aggiornamento.trim()
+                            : "";
+
+            List<Map<String, Object>> bodyParameters =
+                    List.of(
+                            Map.of(
+                                    "type", "text",
+                                    "text", nome
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", String.valueOf(idTicket)
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", descrizione
+                            ),
+                            Map.of(
+                                    "type", "text",
+                                    "text", testoAggiornamento
+                            )
+                    );
+
+            Map<String, Object> bodyComponent =
+                    Map.of(
+                            "type", "body",
+                            "parameters", bodyParameters
+                    );
+
+            Map<String, Object> template =
+                    Map.of(
+                            "name", "aggiornamento_ticket_utente",
+                            "language",
+                            Map.of(
+                                    "code", "it"
+                            ),
+                            "components",
+                            List.of(
+                                    bodyComponent
+                            )
+                    );
+
+            Map<String, Object> payload =
+                    Map.of(
+                            "messaging_product", "whatsapp",
+                            "to", telefonoDestinatario,
+                            "type", "template",
+                            "template", template
+                    );
+
+            HttpHeaders headers =
+                    new HttpHeaders();
+
+            headers.setContentType(
+                    MediaType.APPLICATION_JSON
+            );
+
+            headers.setBearerAuth(
+                    token
+            );
+
+            HttpEntity<Map<String, Object>> entity =
+                    new HttpEntity<>(
+                            payload,
+                            headers
+                    );
+
+            String url =
+                    urlApiMetaMessages.replace(
+                            "{}",
+                            phoneNumberId
+                    );
+
+            System.out.println(
+                    "Invio template aggiornamento_ticket_utente"
+                            + " - telefono="
+                            + telefonoDestinatario
+                            + " - ticket="
+                            + idTicket
+                            + " - aggiornamento="
+                            + testoAggiornamento
+            );
+
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(
+                            url,
+                            entity,
+                            String.class
+                    );
+
+            System.out.println(
+                    "Response aggiornamento_ticket_utente ("
+                            + response.getStatusCode()
+                            + "): "
+                            + response.getBody()
+            );
+
+            return response.getStatusCode()
+                    .is2xxSuccessful();
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Errore invio template aggiornamento_ticket_utente"
+                            + " - ticket="
+                            + idTicket
+            );
+
+            e.printStackTrace();
+
+            return false;
+        }
+    }
+    
     public boolean inviaTemplateApprovazioneUtente(
             Utente utenteRegistrato,
             String nomeNuovo,
