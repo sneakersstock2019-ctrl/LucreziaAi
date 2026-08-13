@@ -387,7 +387,7 @@ public class ConversationInitializationService {
         if (ticketAperti == 1) {
 
             return saluto + " " + nome
-                    + ", sono Lucrezia. "
+                    + ", sono Lucrezia, l'assistente dell'amministratore per gli interventi condominiali. "
                     + "Vedo che hai una segnalazione aperta. "
                     + "Vuoi conoscerne lo stato oppure "
                     + "aprire una nuova segnalazione?";
@@ -396,7 +396,7 @@ public class ConversationInitializationService {
         if (ticketAperti > 1) {
 
             return saluto + " " + nome
-                    + ", sono Lucrezia. "
+                    + ", sono Lucrezia, l'assistente dell'amministratore per gli interventi condominiali. "
                     + "Vedo che hai " + ticketAperti
                     + " segnalazioni aperte. "
                     + "Vuoi conoscere lo stato di una segnalazione "
