@@ -748,6 +748,52 @@ public class FornitoreOutboundToolDao {
         }
     }
     
+    public Long findIdTicketByTelefonataOutbound(
+            Long idTelefonataOutbound) {
+
+        if (idTelefonataOutbound == null) {
+            return null;
+        }
+
+        String sql = """
+            SELECT id_ticket
+            FROM telefonata_outbound
+            WHERE id = ?
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(
+                    1,
+                    idTelefonataOutbound
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+
+                    return rs.getObject(
+                            "id_ticket",
+                            Long.class
+                    );
+                }
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore recupero ticket da telefonata outbound "
+                            + idTelefonataOutbound,
+                    e
+            );
+        }
+
+        return null;
+    }
+    
     private void setNullableLong(
             PreparedStatement ps,
             int index,

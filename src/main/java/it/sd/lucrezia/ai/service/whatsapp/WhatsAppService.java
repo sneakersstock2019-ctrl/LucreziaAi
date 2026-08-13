@@ -646,6 +646,114 @@ public class WhatsAppService {
         }
     }
     
+    public void inviaAggiornamentoPresaInCaricoTicket(
+            Long idTicket,
+            LocalDateTime dataIntervento) {
+
+        if (idTicket == null) {
+
+            System.err.println(
+                    "WHATSAPP AGGIORNAMENTO PRESA IN CARICO"
+                            + " - idTicket nullo"
+            );
+
+            return;
+        }
+
+        try {
+
+            TicketStatusInfo ticket =
+                    ticketDao.findTicketStatusById(
+                            idTicket
+                    );
+
+            if (ticket == null) {
+
+                System.err.println(
+                        "WHATSAPP AGGIORNAMENTO PRESA IN CARICO"
+                                + " - ticket non trovato: "
+                                + idTicket
+                );
+
+                return;
+            }
+
+            Utente utente =
+                    utenteDao.findCondominoByTicketId(
+                            idTicket
+                    );
+
+            if (utente == null
+                    || utente.getTelefono() == null
+                    || utente.getTelefono().isBlank()) {
+
+                System.err.println(
+                        "WHATSAPP AGGIORNAMENTO PRESA IN CARICO"
+                                + " - utente apertura o telefono non disponibile"
+                                + " - ticket="
+                                + idTicket
+                );
+
+                return;
+            }
+
+            String aggiornamento;
+
+            if (dataIntervento != null) {
+
+                String dataFormattata =
+                        dataIntervento.format(
+                                DateTimeFormatter.ofPattern(
+                                        "dd/MM/yyyy 'alle' HH:mm"
+                                )
+                        );
+
+                aggiornamento =
+                        "Il fornitore ha preso in carico la segnalazione. "
+                        + "L'intervento è programmato per il "
+                        + dataFormattata
+                        + ".";
+
+            } else {
+
+                aggiornamento =
+                        "Il fornitore ha preso in carico la segnalazione.";
+            }
+
+            boolean inviato =
+                    inviaTemplateAggiornamentoTicketUtente(
+                            utente,
+                            idTicket,
+                            ticket.getDescrizione(),
+                            aggiornamento
+                    );
+
+            System.out.println(
+                    "WHATSAPP AGGIORNAMENTO PRESA IN CARICO"
+                            + " - ticket="
+                            + idTicket
+                            + " - inviato="
+                            + inviato
+            );
+
+        } catch (Exception e) {
+
+            /*
+             * La presa in carico è già stata registrata.
+             * Un problema WhatsApp non deve invalidarla.
+             */
+            System.err.println(
+                    "Errore invio aggiornamento presa in carico"
+                            + " - ticket="
+                            + idTicket
+                            + " - errore="
+                            + e.getMessage()
+            );
+
+            e.printStackTrace();
+        }
+    }
+    
     public void elaboraMessaggio(String body) {
 
         try {
@@ -1369,6 +1477,15 @@ public class WhatsAppService {
 
             return;
         }
+        
+        /*
+         * Informiamo il condomino della presa in carico
+         * e della data programmata.
+         */
+        inviaAggiornamentoPresaInCaricoTicket(
+                response.getTicketId(),
+                dataIntervento
+        );
 
         String risposta =
                 """

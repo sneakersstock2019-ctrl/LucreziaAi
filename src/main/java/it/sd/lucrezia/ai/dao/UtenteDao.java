@@ -623,4 +623,100 @@ public class UtenteDao {
             ps.executeUpdate();
         }
     }
+    
+    public Utente findCondominoByTicketId(
+            Long idTicket) {
+
+        String sql = """
+            SELECT
+                u.id,
+                u.nome,
+                u.cognome,
+                u.email,
+                u.telefono,
+                u.ruolo,
+                u.interno,
+                c.id AS id_condominio,
+                c.nome AS nome_condominio,
+                c.indirizzo AS indirizzo_condominio
+            FROM ticket t
+            JOIN utenti u
+              ON u.id = t.id_utente_apertura
+            JOIN condomini c
+              ON c.id = t.id_condominio
+            WHERE t.id = ?
+            LIMIT 1
+            """;
+
+        try (
+                Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(
+                    1,
+                    idTicket
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return null;
+                }
+
+                Utente utente =
+                        new Utente();
+
+                utente.setId(
+                        rs.getLong("id")
+                );
+
+                utente.setNome(
+                        rs.getString("nome")
+                );
+
+                utente.setCognome(
+                        rs.getString("cognome")
+                );
+
+                utente.setEmail(
+                        rs.getString("email")
+                );
+
+                utente.setTelefono(
+                        rs.getString("telefono")
+                );
+
+                utente.setRuolo(
+                        rs.getString("ruolo")
+                );
+
+                utente.setInterno(
+                        rs.getString("interno")
+                );
+
+                utente.setIdCondominio(
+                        rs.getLong("id_condominio")
+                );
+
+                utente.setNomeCondominio(
+                        rs.getString("nome_condominio")
+                );
+
+                utente.setIndirizzoCondominio(
+                        rs.getString("indirizzo_condominio")
+                );
+
+                return utente;
+            }
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Errore ricerca condomino apertura ticket "
+                            + idTicket,
+                    e
+            );
+        }
+    }
 }

@@ -309,30 +309,49 @@ public class ElevenLabsToolController {
     public ToolResult<Map<String, Object>> scheduleIntervention(
             @RequestBody Map<String, Object> body) {
 
-        logTool("scheduleIntervention", body);
+        logTool(
+                "scheduleIntervention",
+                body
+        );
 
         Long idTelefonataOutbound =
-                getLong(body, "telefonata_outbound_id");
+                getLong(
+                        body,
+                        "telefonata_outbound_id"
+                );
 
         String dataInterventoRaw =
-                safeRaw(body.get("data_intervento"));
+                safeRaw(
+                        body.get("data_intervento")
+                );
 
         String nota =
-                safeRaw(body.get("nota"));
+                safeRaw(
+                        body.get("nota")
+                );
 
         if (idTelefonataOutbound == null) {
-            return missingField("telefonata_outbound_id");
+
+            return missingField(
+                    "telefonata_outbound_id"
+            );
         }
 
         if (dataInterventoRaw.isBlank()) {
-            return missingField("data_intervento");
+
+            return missingField(
+                    "data_intervento"
+            );
         }
 
         LocalDateTime dataIntervento;
 
         try {
+
             dataIntervento =
-                    LocalDateTime.parse(dataInterventoRaw);
+                    LocalDateTime.parse(
+                            dataInterventoRaw
+                    );
 
         } catch (DateTimeParseException e) {
 
@@ -340,45 +359,113 @@ public class ElevenLabsToolController {
                     "KO",
                     ToolNextAction.ASK_FOR_MISSING_INFORMATION,
                     Map.of(
-                            "invalid_field", "data_intervento",
+                            "invalid_field",
+                            "data_intervento",
+
                             "expected_format",
                             "yyyy-MM-dd'T'HH:mm:ss",
+
                             "received_value",
                             dataInterventoRaw
                     )
             );
         }
 
-        if (dataIntervento.isBefore(LocalDateTime.now())) {
+        if (dataIntervento.isBefore(
+                LocalDateTime.now())) {
 
             return ToolResult.error(
                     "KO",
                     ToolNextAction.ASK_FOR_MISSING_INFORMATION,
                     Map.of(
-                            "invalid_field", "data_intervento",
+                            "invalid_field",
+                            "data_intervento",
+
                             "reason",
                             "La data dell'intervento è nel passato"
                     )
             );
         }
 
+        /*
+         * ============================================================
+         * PROGRAMMAZIONE INTERVENTO
+         * ============================================================
+         */
+
         boolean aggiornato =
-                fornitoreOutboundToolDao.programmaIntervento(
-                        idTelefonataOutbound,
-                        dataIntervento,
-                        nota
-                );
+                fornitoreOutboundToolDao
+                        .programmaIntervento(
+                                idTelefonataOutbound,
+                                dataIntervento,
+                                nota
+                        );
 
         if (!aggiornato) {
+
             return ToolResult.error(
                     "KO",
                     ToolNextAction.ASK_FOR_MISSING_INFORMATION,
                     Map.of(
                             "telefonata_outbound_id",
                             idTelefonataOutbound,
+
                             "reason",
                             "Telefonata outbound non trovata"
                     )
+            );
+        }
+
+        /*
+         * ============================================================
+         * RECUPERO TICKET
+         * ============================================================
+         */
+
+        Long idTicket =
+                fornitoreOutboundToolDao
+                        .findIdTicketByTelefonataOutbound(
+                                idTelefonataOutbound
+                        );
+
+        /*
+         * ============================================================
+         * NOTIFICA WHATSAPP AL CONDOMINO
+         * ============================================================
+         *
+         * Non facciamo fallire il tool se WhatsApp non funziona.
+         */
+
+        if (idTicket != null) {
+
+            try {
+
+                whatsAppService
+                        .inviaAggiornamentoPresaInCaricoTicket(
+                                idTicket,
+                                dataIntervento
+                        );
+
+            } catch (Exception e) {
+
+                System.err.println(
+                        "Intervento programmato correttamente"
+                                + " - ticket="
+                                + idTicket
+                                + " - ma notifica WhatsApp fallita: "
+                                + e.getMessage()
+                );
+
+                e.printStackTrace();
+            }
+
+        } else {
+
+            System.err.println(
+                    "scheduleIntervention"
+                            + " - impossibile recuperare idTicket"
+                            + " dalla telefonata outbound "
+                            + idTelefonataOutbound
             );
         }
 
@@ -393,12 +480,23 @@ public class ElevenLabsToolController {
                 Map.of(
                         "telefonata_outbound_id",
                         idTelefonataOutbound,
+
+                        "ticket_id",
+                        idTicket != null
+                                ? idTicket
+                                : 0L,
+
                         "data_intervento",
                         dataIntervento.toString(),
+
                         "data_intervento_formattata",
-                        dataIntervento.format(formatter),
+                        dataIntervento.format(
+                                formatter
+                        ),
+
                         "nota",
                         nota,
+
                         "esito",
                         "INTERVENTO_PROGRAMMATO"
                 )
