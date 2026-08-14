@@ -269,7 +269,23 @@ public class UtenteDao {
               ON c.id = muc.id_condominio
             WHERE LOWER(TRIM(u.nome)) = LOWER(TRIM(?))
               AND LOWER(TRIM(COALESCE(u.cognome, ''))) = LOWER(TRIM(?))
-              AND LOWER(TRIM(COALESCE(c.indirizzo, ''))) = LOWER(TRIM(?))
+              AND TRIM(
+                    REGEXP_REPLACE(
+                        LOWER(COALESCE(c.indirizzo, '')),
+                        '[^a-z0-9àèéìòù]+',
+                        ' ',
+                        'g'
+                    )
+                  )
+                  =
+                  TRIM(
+                    REGEXP_REPLACE(
+                        LOWER(COALESCE(?, '')),
+                        '[^a-z0-9àèéìòù]+',
+                        ' ',
+                        'g'
+                    )
+                  )
               AND LOWER(TRIM(COALESCE(u.interno, ''))) = LOWER(TRIM(?))
               AND u.ruolo = 'CONDOMINO'
             LIMIT 1
@@ -336,6 +352,7 @@ public class UtenteDao {
             }
 
         } catch (Exception e) {
+
             e.printStackTrace();
         }
 
