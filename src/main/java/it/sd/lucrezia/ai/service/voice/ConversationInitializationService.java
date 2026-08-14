@@ -56,21 +56,13 @@ public class ConversationInitializationService {
          */
         if (utente == null) {
 
-        	//TODO
-        	if(telefono.endsWith("3492123304")) {
-        		return initializeUtenteSconosciuto(
-        				telefono,
-        				numeroLucrezia,
-        				normalizedCallSid,
-        				conversationId,
-        				canale
-        				);
-        	} else {
-                throw new IllegalStateException(
-                        "Nessun condomino associato al numero "
-                                + telefono
-                );
-        	}
+        	return initializeUtenteSconosciuto(
+        			telefono,
+        			numeroLucrezia,
+        			normalizedCallSid,
+        			conversationId,
+        			canale
+        			);
         }
 
         /*
