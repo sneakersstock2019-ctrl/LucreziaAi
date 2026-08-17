@@ -334,7 +334,8 @@ public class TicketDao {
             String priorita,
             String canale,
             String area,
-            String descrizione) {
+            String descrizione,
+            String statoTicket) {
 
         String sql = """
             INSERT INTO ticket (
@@ -355,7 +356,7 @@ public class TicketDao {
                 (
                     SELECT id
                     FROM stati_ticket
-                    WHERE codice = 'IN_ATTESA_APPROVAZIONE'
+                    WHERE codice = ?
                 ),
                 ?,
                 ?,
@@ -374,19 +375,34 @@ public class TicketDao {
             String descrizioneCompleta =
                     descrizione;
 
-            if (area != null && !area.isBlank()) {
+            if (area != null
+                    && !area.isBlank()) {
 
                 descrizioneCompleta =
                         descrizione
-                        + " Area: "
-                        + area
-                        + ".";
+                                + " Area: "
+                                + area
+                                + ".";
             }
 
-            ps.setLong(
-                    1,
-                    idCondominio
-            );
+            /*
+             * Nel flusso DA_VERIFICARE_ADMIN
+             * il condominio può non essere ancora noto.
+             */
+            if (idCondominio != null) {
+
+                ps.setLong(
+                        1,
+                        idCondominio
+                );
+
+            } else {
+
+                ps.setNull(
+                        1,
+                        java.sql.Types.BIGINT
+                );
+            }
 
             ps.setLong(
                     2,
@@ -395,21 +411,26 @@ public class TicketDao {
 
             ps.setString(
                     3,
-                    categoria
+                    statoTicket
             );
 
             ps.setString(
                     4,
-                    priorita
+                    categoria
             );
 
             ps.setString(
                     5,
-                    canale
+                    priorita
             );
 
             ps.setString(
                     6,
+                    canale
+            );
+
+            ps.setString(
+                    7,
                     descrizioneCompleta
             );
 
@@ -420,16 +441,28 @@ public class TicketDao {
                     Long idTicket =
                             rs.getLong("id");
 
-                    /*
-                     * Lo storico deve indicare chiaramente
-                     * perché non è ancora operativo.
-                     */
+                    String notaStorico;
+
+                    if ("IN_ATTESA_VERIFICA_ADMIN"
+                            .equalsIgnoreCase(statoTicket)) {
+
+                        notaStorico =
+                                "Segnalazione aperta da numero non registrato. "
+                                        + "Associazione non individuata dopo i tentativi previsti. "
+                                        + "Richiesta in attesa di verifica ADMIN.";
+
+                    } else {
+
+                        notaStorico =
+                                "Segnalazione aperta da numero non ancora autorizzato";
+                    }
+
                     insertStorico(
                             conn,
                             idTicket,
-                            "IN_ATTESA_APPROVAZIONE",
+                            statoTicket,
                             null,
-                            "Segnalazione aperta da numero non ancora autorizzato"
+                            notaStorico
                     );
 
                     return idTicket;

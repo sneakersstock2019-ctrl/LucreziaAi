@@ -13,6 +13,7 @@ public class FindRegisteredUserResponse {
 
     private Long idUtente;
     private Long idCondominio;
+    private Long idRichiesta;
 
     private String nomeUtente;
     private String cognomeUtente;

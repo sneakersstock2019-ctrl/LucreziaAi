@@ -7,6 +7,7 @@ import it.sd.lucrezia.ai.bean.FindRegisteredUserResponse;
 import it.sd.lucrezia.ai.bean.SendApprovalRequest;
 import it.sd.lucrezia.ai.bean.SendApprovalResponse;
 import it.sd.lucrezia.ai.bean.Utente;
+import it.sd.lucrezia.ai.dao.RichiestaAssociazioneUtenteDao;
 import it.sd.lucrezia.ai.dao.UtenteDao;
 import lombok.RequiredArgsConstructor;
 
@@ -14,11 +15,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UnknownUserService {
 
-    private static final int MAX_TENTATIVI = 3;
+    private static final int MAX_TENTATIVI = 2;
 
     private final UtenteDao utenteDao;
     private final UnknownUserSearchAttemptService attemptService;
     private final UnknownUserApprovalService unknownUserApprovalService;
+    private final RichiestaAssociazioneUtenteDao richiestaAssociazioneUtenteDao;
 
     public FindRegisteredUserResponse findRegisteredUser(
             FindRegisteredUserRequest request) {
@@ -28,12 +30,26 @@ public class UnknownUserService {
 
         /*
          * Se abbiamo già raggiunto il massimo,
-         * non effettuiamo altre query.
+         * non effettuiamo altre query di ricerca.
+         *
+         * In questo caso assicuriamoci però che esista
+         * una richiesta di associazione da verificare
+         * manualmente da parte dell'ADMIN.
          */
         if (attemptService.maxReached(
                 request.getIdTelefonata())) {
 
-            response.setSuccess(false);
+            Long idRichiesta =
+                    creaRichiestaDaVerificareAdminSeNecessaria(
+                            request
+                    );
+
+            /*
+             * Il tool ha completato correttamente il proprio flusso.
+             * Non è un errore tecnico: semplicemente l'utente
+             * registrato non è stato individuato entro i tentativi previsti.
+             */
+            response.setSuccess(true);
             response.setFound(false);
 
             response.setAttemptsUsed(
@@ -44,9 +60,18 @@ public class UnknownUserService {
 
             response.setMaxAttemptsReached(true);
 
+            /*
+             * Se hai aggiunto idRichiesta al bean response.
+             */
+            response.setIdRichiesta(
+                    idRichiesta
+            );
+
             response.setMessage(
                     "Sono già stati effettuati tre tentativi "
-                    + "di identificazione senza successo."
+                            + "di identificazione senza successo. "
+                            + "La richiesta sarà verificata "
+                            + "da un amministratore."
             );
 
             response.setNextAction(
@@ -286,5 +311,42 @@ public class UnknownUserService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+    
+    private Long creaRichiestaDaVerificareAdminSeNecessaria(
+            FindRegisteredUserRequest request) {
+
+        Long idRichiesta =
+        		richiestaAssociazioneUtenteDao.findIdByTelefonata(
+                        request.getIdTelefonata()
+                );
+
+        /*
+         * Se esiste già una richiesta per questa telefonata,
+         * non ne creiamo una seconda.
+         */
+        if (idRichiesta != null) {
+            return idRichiesta;
+        }
+
+        return richiestaAssociazioneUtenteDao
+                .insertRichiestaDaVerificareAdmin(
+                        request.getTelefonoNuovo(),
+                        request.getNomeNuovo(),
+                        request.getCognomeNuovo(),
+
+                        request.getTelefonoRegistrato(),
+                        request.getNomeRegistrato(),
+                        request.getCognomeRegistrato(),
+                        request.getIndirizzoCondominio(),
+
+                        request.getInterno() != null
+                                ? String.valueOf(
+                                        request.getInterno()
+                                )
+                                : null,
+
+                        request.getIdTelefonata()
+                );
     }
 }
