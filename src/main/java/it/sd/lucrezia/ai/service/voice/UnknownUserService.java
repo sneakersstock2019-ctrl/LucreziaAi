@@ -68,12 +68,14 @@ public class UnknownUserService {
             );
 
             response.setMessage(
-                    "Sono già stati effettuati tre tentativi "
-                            + "di identificazione senza successo. "
+                    "Sono già stati effettuati "
+                            + MAX_TENTATIVI
+                            + " tentativi di identificazione "
+                            + "senza successo. "
                             + "La richiesta sarà verificata "
                             + "da un amministratore."
             );
-
+            
             response.setNextAction(
                     "MAX_ATTEMPTS_REACHED"
             );
@@ -274,8 +276,11 @@ public class UnknownUserService {
         }
 
         /*
+         * ============================================================
          * NON TROVATO
+         * ============================================================
          */
+
         boolean maxReached =
                 tentativo >= MAX_TENTATIVI;
 
@@ -283,28 +288,59 @@ public class UnknownUserService {
         response.setFound(false);
         response.setMaxAttemptsReached(maxReached);
 
+        /*
+         * ============================================================
+         * MASSIMO TENTATIVI RAGGIUNTO
+         * ============================================================
+         *
+         * Questo è il punto fondamentale:
+         * l'ultimo tentativo è appena fallito.
+         *
+         * Creiamo subito una richiesta di associazione
+         * DA_VERIFICARE_ADMIN, senza aspettare una nuova
+         * invocazione del tool.
+         */
         if (maxReached) {
+
+            Long idRichiesta =
+                    creaRichiestaDaVerificareAdminSeNecessaria(
+                            request
+                    );
+
+            response.setIdRichiesta(
+                    idRichiesta
+            );
 
             response.setMessage(
                     "Non è stato possibile individuare "
-                    + "l'utente registrato dopo tre tentativi."
+                            + "l'utente registrato dopo "
+                            + MAX_TENTATIVI
+                            + " tentativi. "
+                            + "La richiesta sarà verificata "
+                            + "da un amministratore."
             );
 
             response.setNextAction(
                     "MAX_ATTEMPTS_REACHED"
             );
 
-        } else {
-
-            response.setMessage(
-                    "Nessun utente registrato trovato "
-                    + "con i dati indicati."
-            );
-
-            response.setNextAction(
-                    "RETRY_SEARCH"
-            );
+            return response;
         }
+
+        /*
+         * ============================================================
+         * CI SONO ANCORA TENTATIVI DISPONIBILI
+         * ============================================================
+         */
+
+        response.setMessage(
+                "Nessun utente registrato trovato "
+                        + "con i dati indicati."
+        );
+
+        response.setNextAction(
+                "RETRY_SEARCH"
+        );
 
         return response;
     }
