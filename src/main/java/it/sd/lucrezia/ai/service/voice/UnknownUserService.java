@@ -338,9 +338,18 @@ public class UnknownUserService {
                         + "con i dati indicati."
         );
 
-        response.setNextAction(
-                "RETRY_SEARCH"
-        );
+        if (ricercaTelefono) {
+
+            response.setNextAction(
+                    "RETRY_SEARCH_NUMBER"
+            );
+
+        } else {
+
+            response.setNextAction(
+                    "RETRY_SEARCH_ANAG"
+            );
+        }
 
         return response;
     }
